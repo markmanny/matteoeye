@@ -1,0 +1,50 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! You can write in English or Italian.
+        **Never paste your Blink password or the contents of `blink_credenziali.json`.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, what happened instead?
+    validations:
+      required: true
+  - type: dropdown
+    id: system
+    attributes:
+      label: System
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS (Apple silicon)
+        - macOS (Intel)
+        - Other / from source on Linux
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How do you run MatteoEye?
+      options:
+        - Package from the Releases page
+        - From source (python app.py)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: e.g. v1.0.0 or commit hash
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: |
+        Relevant lines from `blinklive.log` (`%APPDATA%\MatteoEye` on Windows, `~/Library/Application Support/MatteoEye` on macOS).
+        Remove your email address and anything else you don't want to publish.
+      render: text

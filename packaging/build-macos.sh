@@ -1,11 +1,11 @@
 #!/bin/bash
-# Costruisce "MatteoEye per Mac.zip" nella cartella del progetto: l'app per chip Apple e,
+# Costruisce "dist/MatteoEye per Mac.zip": l'app per chip Apple e,
 # se c'e' Rosetta, anche quella per Mac Intel.
 # Requisiti: Python 3.13 "universal2" da python.org (PY per cambiarlo).
 set -e
 cd "$(dirname "$0")/.."
 ROOT=$PWD
-OUT="$ROOT/MatteoEye per Mac"
+OUT="$ROOT/dist/MatteoEye per Mac"
 WORK="${TMPDIR:-/tmp}/matteoeye_build_mac"
 PY=${PY:-/Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13}
 [ -x "$PY" ] || { echo "Python non trovato in $PY (installa Python 3.13 da python.org)"; exit 1; }
@@ -20,7 +20,7 @@ build() {  # $1 = architettura (arm64 | x86_64), $2 = nome dell'app
   $pre "$venv/bin/pip" install -q --upgrade pip
   $pre "$venv/bin/pip" install -q -r requirements.txt pywebview pyinstaller
   $pre "$venv/bin/pyinstaller" --noconfirm --clean --windowed --name "MatteoEye" \
-    --icon "$ROOT/strumenti/MatteoEye.icns" --osx-bundle-identifier it.matteoeye.app \
+    --icon "$ROOT/packaging/MatteoEye.icns" --osx-bundle-identifier it.matteoeye.app \
     --add-data "$ROOT/static:static" \
     --workpath "$WORK/build_$arch" --distpath "$WORK/dist_$arch" --specpath "$WORK/build_$arch" \
     app.py > "$WORK/pyinstaller_$arch.log" 2>&1 || { tail -20 "$WORK/pyinstaller_$arch.log"; exit 1; }
@@ -33,7 +33,7 @@ if arch -x86_64 /usr/bin/true 2>/dev/null; then
 else
   echo "Rosetta assente: salto la versione per Mac Intel"
 fi
-cp "strumenti/LEGGIMI - Mac.txt" "$OUT/"
-rm -f "$ROOT/MatteoEye per Mac.zip"
-ditto -c -k --keepParent "$OUT" "$ROOT/MatteoEye per Mac.zip"
-echo "Pronto: $ROOT/MatteoEye per Mac.zip"
+cp "packaging/LEGGIMI - Mac.txt" "$OUT/"
+rm -f "$ROOT/dist/MatteoEye per Mac.zip"
+ditto -c -k --keepParent "$OUT" "$ROOT/dist/MatteoEye per Mac.zip"
+echo "Pronto: $ROOT/dist/MatteoEye per Mac.zip"

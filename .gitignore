@@ -7,11 +7,14 @@ __pycache__/
 blink_credenziali.json
 *.log
 
-# cartelle estratte dagli zip (gli zip sono gia' nel repository)
+# pacchetti costruiti (si pubblicano nelle Releases, non nel repository)
+dist/
+*.zip
 MatteoEye per Mac/
 MatteoEye per Windows/
 
-# file di lavoro dei test
+# file di lavoro degli avviatori e dei test
+ngrok_dominio.txt
 tests/appdata_fake/
 tests/rec_test/
 

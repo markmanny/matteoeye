@@ -1,12 +1,12 @@
 #!/bin/bash
-# Prepara "MatteoEye per Windows.zip" lavorando dal Mac: Python "embeddable" di python.org
+# Prepara "dist/MatteoEye per Windows.zip" lavorando dal Mac: Python "embeddable" di python.org
 # piu' i pacchetti nella versione per Windows (scaricati con pip, senza bisogno di un PC Windows).
 # Requisiti: pip del progetto (./.venv/bin/pip, oppure PIP=...), curl, zip.
 set -e
 cd "$(dirname "$0")/.."
 ROOT=$PWD
 PYVER=${PYVER:-3.13.17}          # versione di Python da python.org (serie 3.13)
-OUT="$ROOT/MatteoEye per Windows"
+OUT="$ROOT/dist/MatteoEye per Windows"
 WORK="${TMPDIR:-/tmp}/matteoeye_build_win"
 PIP=${PIP:-./.venv/bin/pip}
 [ -x "$PIP" ] || PIP=pip3
@@ -33,10 +33,10 @@ pulisci
 echo "== file del programma"
 cp app.py "$OUT/"
 cp static/index.html static/mpegts.js "$OUT/static/"
-cp "strumenti/LEGGIMI - Windows.txt" "$OUT/"
+cp "packaging/LEGGIMI - Windows.txt" "$OUT/"
 printf '@echo off\r\ncd /d "%%~dp0"\r\nstart "MatteoEye" /min "%%~dp0python\\python.exe" "%%~dp0app.py" --app\r\n' > "$OUT/Avvia MatteoEye.bat"
 find "$OUT" -name ".DS_Store" -delete
 
-rm -f "$ROOT/MatteoEye per Windows.zip"
-(cd "$ROOT" && zip -q -r -X "MatteoEye per Windows.zip" "MatteoEye per Windows" -x "*.DS_Store")
-echo "Pronto: $ROOT/MatteoEye per Windows.zip"
+rm -f "$ROOT/dist/MatteoEye per Windows.zip"
+(cd "$ROOT/dist" && zip -q -r -X "MatteoEye per Windows.zip" "MatteoEye per Windows" -x "*.DS_Store")
+echo "Pronto: $ROOT/dist/MatteoEye per Windows.zip"
