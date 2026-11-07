@@ -22,10 +22,11 @@ import ssl
 import sys
 import tempfile
 import time
+from contextlib import asynccontextmanager
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
-from aiohttp import ClientSession
+from aiohttp import ClientConnectionError, ClientSession
 from blinkpy import api as blink_api
 from blinkpy.auth import Auth, BlinkTwoFARequiredError
 from blinkpy.blinkpy import Blink
@@ -146,7 +147,18 @@ async def _recv_exact(self):
 
 BlinkLiveStream.recv = _recv_exact
 
-app = FastAPI(title="MatteoEye")
+
+@asynccontextmanager
+async def lifespan(_app):
+    """Avvio e chiusura del server (sostituisce i vecchi @app.on_event, deprecati)."""
+    await resume()
+    try:
+        yield
+    finally:
+        await shutdown()
+
+
+app = FastAPI(title="MatteoEye", lifespan=lifespan)
 
 # ---------------------------------------------------------------- stato globale
 state = {
@@ -225,7 +237,6 @@ def set_cookie(resp, token):
 
 
 # ---------------------------------------------------------------- avvio: riusa token salvati
-@app.on_event("startup")
 async def resume():
     if state["open_url"]:
         asyncio.get_running_loop().call_later(0.5, _open_browser, state["open_url"])
@@ -248,7 +259,6 @@ async def resume():
         log.warning("Impossibile riusare i token salvati: %s", exc)
 
 
-@app.on_event("shutdown")
 async def shutdown():
     for name in list(streams):
         await stop_stream(name)
@@ -280,8 +290,33 @@ def quit_app():
         os._exit(0)
 
 
+def unblock_downloaded_dlls():
+    """Windows: toglie il segno "scaricato da Internet" (flusso Zone.Identifier) dalle DLL.
+
+    Estraendo lo zip con Esplora file ogni file eredita quel segno e .NET Framework si
+    rifiuta di caricare Python.Runtime.dll (pythonnet), con l'errore "Failed to resolve
+    Python.Runtime.Loader.Initialize": senza questo passaggio la finestra non si apre
+    e si ripiega sul browser. Equivale a "Proprieta' > Annulla blocco" su ogni DLL.
+    """
+    if sys.platform != "win32":
+        return
+    count = 0
+    prefix = Path(sys.prefix).resolve()
+    roots = [BASE] if BASE in (prefix, *prefix.parents) else [BASE, prefix]  # Python dentro la cartella: una sola passata
+    for root in roots:
+        for dll in root.rglob("*.dll"):
+            try:
+                os.remove(f"{dll}:Zone.Identifier")
+                count += 1
+            except OSError:
+                pass  # nessun segno (caso normale) o file non modificabile
+    if count:
+        log.info("Sbloccate %d DLL segnate come scaricate da Internet", count)
+
+
 def run_window(url):
     """Finestra propria con la pagina dentro (pywebview). Blocca finche' viene chiusa."""
+    unblock_downloaded_dlls()
     import webview
 
     win = webview.create_window("MatteoEye", url, width=1100, height=780, min_size=(640, 440))
@@ -391,6 +426,10 @@ async def login(payload: dict):
     except BlinkTwoFARequiredError:
         state["pending"] = blink
         return {"need_2fa": True}
+    except (ClientConnectionError, asyncio.TimeoutError) as exc:
+        # rete assente o DNS che non risolve i server Blink: non e' un errore del programma
+        log.warning("Login: server Blink non raggiungibile (%s)", exc)
+        raise HTTPException(503, "Non riesco a contattare Blink: controlla la connessione a Internet e riprova")
     except Exception as exc:
         log.exception("Errore login")
         raise HTTPException(401, f"Accesso non riuscito: {exc}")
