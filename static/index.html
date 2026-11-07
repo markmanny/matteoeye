@@ -2,91 +2,307 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MatteoEye</title>
+<link rel="icon" href="/static/logo.svg" type="image/svg+xml">
+<script>
+  // tema scelto (chiaro/scuro) applicato prima del disegno, per evitare il lampo bianco
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem("me-theme"); } catch (e) {}
+    if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    document.documentElement.dataset.theme = t;
+  })();
+</script>
 <script src="/static/mpegts.js"></script>
 <style>
-  :root{--bg:#0f1115;--card:#181b22;--line:#262a33;--text:#e8eaef;--muted:#8b93a3;--accent:#3b82f6;--live:#ef4444;--ok:#22c55e}
+  :root, :root[data-theme="light"] {
+    --bg:#f5f7fa; --surface:#ffffff; --surface-2:#eef1f5; --line:#e3e7ed; --text:#16191f; --muted:#68707d;
+    --accent:#2563eb; --accent-soft:#dbe6fd; --accent-text:#1d4ed8; --live:#e5383b; --ok:#16a34a; --warn:#d97706;
+    --pill:#ffffffee; --pill-text:#16191f; --shadow:0 1px 2px rgba(16,24,40,.06),0 6px 18px rgba(16,24,40,.08);
+    --img-bg:#d9dee6; color-scheme:light;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0e1014; --surface:#171a20; --surface-2:#1f232b; --line:#272c35; --text:#e9ecf1; --muted:#8d95a3;
+    --accent:#3b82f6; --accent-soft:#1c2c4a; --accent-text:#93b4fb; --live:#ef4444; --ok:#22c55e; --warn:#f59e0b;
+    --pill:#1f232bee; --pill-text:#e9ecf1; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.35);
+    --img-bg:#0b0d11; color-scheme:dark;
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-  header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)}
-  header h1{font-size:18px;margin:0;display:flex;gap:8px;align-items:center}
-  .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
-  button{font:inherit;border:1px solid var(--line);background:#222733;color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer}
-  button:hover{border-color:#3a4150}
-  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  button.danger{background:var(--live);border-color:var(--live);color:#fff}
-  button:disabled{opacity:.5;cursor:wait}
+  html,body{margin:0;background:var(--bg);color:var(--text)}
+  body{font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+  button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+  button:disabled{opacity:.55;cursor:wait}
+  svg{display:block}
   .hidden{display:none!important}
-  /* login */
-  .login{max-width:360px;margin:12vh auto;padding:28px;background:var(--card);border:1px solid var(--line);border-radius:14px}
-  .login h2{margin:0 0 4px;font-size:20px}
-  .login p{color:var(--muted);margin:0 0 18px;font-size:14px}
-  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
-  input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:#0f1115;color:var(--text);font:inherit}
+
+  /* ---------- barra in alto */
+  header{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+  .bar{display:flex;align-items:center;gap:14px;padding:10px 20px;max-width:1400px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:-.2px;white-space:nowrap}
+  .brand img{width:32px;height:32px;border-radius:9px}
+  .brand b{color:var(--accent)}
+  .tabs{display:flex;gap:4px;overflow-x:auto;flex:1;scrollbar-width:none;margin-left:12px}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{padding:12px 14px;font-size:16px;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;border-radius:8px 8px 0 0}
+  .tab:hover{color:var(--text)}
+  .tab.on{color:var(--accent-text);border-bottom-color:var(--accent);font-weight:600}
+  .tools{display:flex;gap:6px;margin-left:auto;position:relative}
+  .icon-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--muted)}
+  .icon-btn:hover{background:var(--surface-2);color:var(--text)}
+  .icon-btn svg{width:21px;height:21px}
+  .menu{position:absolute;right:0;top:46px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:6px;min-width:210px}
+  .menu button{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;border-radius:9px;text-align:left}
+  .menu button:hover{background:var(--surface-2)}
+  .menu button svg{width:18px;height:18px;color:var(--muted)}
+  .menu .danger{color:var(--live)}
+  .menu .danger svg{color:var(--live)}
+
+  /* ---------- contenuto */
+  main{max-width:1400px;margin:0 auto;padding:22px 20px 60px}
+  h2.section{font-size:19px;font-weight:600;margin:4px 0 16px;color:var(--muted)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:24px}
+  .empty{color:var(--muted);text-align:center;padding:70px 0}
+
+  .cam{position:relative}
+  .view{position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:var(--img-bg);box-shadow:var(--shadow);isolation:isolate}
+  .view img,.view video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .view::before{content:"";position:absolute;inset:0 0 auto 0;height:38%;background:linear-gradient(rgba(0,0,0,.45),transparent);z-index:1;pointer-events:none}
+  .name{position:absolute;top:12px;left:16px;z-index:2;color:#fff;font-size:18px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+  .age{position:absolute;left:14px;bottom:14px;z-index:2;background:rgba(17,19,24,.82);color:#fff;font-size:13px;font-weight:500;padding:4px 10px;border-radius:8px}
+  .play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;width:62px;height:62px;border-radius:50%;
+        background:rgba(255,255,255,.22);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:grid;place-items:center;color:#fff;transition:transform .15s,background .15s}
+  .play:hover{transform:translate(-50%,-50%) scale(1.07);background:rgba(255,255,255,.32)}
+  .play svg{width:30px;height:30px;margin-left:4px}
+  .pills{position:absolute;right:12px;bottom:12px;z-index:3;display:flex;gap:8px}
+  .pill{height:44px;min-width:44px;padding:0 12px;border-radius:22px;background:var(--pill);color:var(--pill-text);display:flex;align-items:center;gap:8px;
+        box-shadow:0 2px 8px rgba(0,0,0,.18);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:13px;font-weight:600}
+  .pill:hover{filter:brightness(.96)}
+  .pill svg{width:20px;height:20px}
+  .pill .sep{width:1px;height:22px;background:var(--line)}
+  .pill.group{padding:0 4px;gap:0}
+  .pill.group button{height:44px;min-width:40px;padding:0 8px;display:grid;place-items:center;border-radius:20px}
+  .pill.group button:hover{background:var(--surface-2)}
+  .pill.group button.rec-on{background:var(--live);color:#fff}
+  .pill.group button.rec-on:hover{background:var(--live);filter:brightness(1.1)}
+  .bat-low{color:var(--live)}
+  .badge{position:absolute;top:12px;right:14px;z-index:2;background:var(--live);color:#fff;font-size:12px;font-weight:700;padding:4px 9px;border-radius:7px;letter-spacing:.05em}
+  @keyframes blink{50%{opacity:.4}}
+  .badge.rec{animation:blink 1s infinite}
+  .overlay{position:absolute;inset:0;z-index:4;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:rgba(10,12,16,.55);color:#fff;font-size:14px;text-align:center;padding:20px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ring{width:30px;height:30px;border-radius:50%;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;animation:spin .8s linear infinite}
+  .meta{display:flex;gap:14px;padding:10px 6px 0;color:var(--muted);font-size:13px;flex-wrap:wrap}
+  .meta span{display:flex;align-items:center;gap:5px}
+  .meta svg{width:15px;height:15px}
+  .cam.live .play,.cam.live .age{display:none}
+
+  /* schermo intero */
+  .cam.full{position:fixed;inset:0;z-index:20;background:#000;padding:0}
+  .cam.full .view{height:100%;aspect-ratio:auto;border-radius:0}
+  .cam.full .view video,.cam.full .view img{object-fit:contain}
+  .cam.full .meta{display:none}
+
+  /* Sync Module */
+  .sync{margin-top:28px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center}
+  .sync b{font-size:17px;font-weight:600}
+  .sync .st{display:flex;align-items:center;gap:8px;color:var(--muted)}
+  .sync .st svg{width:24px;height:24px;color:var(--ok)}
+  .sync .st.off svg{color:var(--muted)}
+
+  /* interruttore Attivo/Disattivo */
+  .systems{margin-top:34px}
+  #systems{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:14px}
+  .sys{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px 14px 20px;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}
+  .sys-name{display:flex;flex-direction:column;gap:3px}
+  .sys-name b{font-size:17px;font-weight:600}
+  .sys .st{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:14px}
+  .sys .st svg{width:20px;height:20px;color:var(--ok)}
+  .sys .st.off svg{color:var(--muted)}
+  .seg{display:flex;background:var(--surface-2);border:1px solid var(--line);border-radius:24px;padding:3px}
+  .seg button{padding:8px 18px;border-radius:21px;font-size:15px;color:var(--muted);font-weight:500}
+  .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+  .seg button.on.off-state{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+  /* navigazione Dispositivi / Clip */
+  .nav{display:flex;gap:4px;background:var(--surface-2);border-radius:12px;padding:3px;margin-left:8px}
+  .nav button{padding:7px 14px;border-radius:9px;font-size:14px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:7px}
+  .nav button svg{width:17px;height:17px}
+  .nav button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+  /* clip */
+  .clipbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 18px}
+  .chip{padding:7px 14px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-size:14px;color:var(--muted)}
+  .chip.on{background:var(--accent-soft);border-color:transparent;color:var(--accent-text);font-weight:600}
+  .clipbar .spacer{flex:1}
+  .day{display:flex;align-items:baseline;gap:10px;margin:26px 0 12px}
+  .day b{font-size:19px;font-weight:600}
+  .day span{color:var(--muted);font-size:14px}
+  .clips{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+  .clip{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px;text-align:left;width:100%}
+  .clip:hover{border-color:var(--accent)}
+  .clip.on{border:2px solid var(--accent);padding:9px;background:var(--accent-soft)}
+  .clip .th{position:relative;flex:0 0 136px;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:var(--accent-soft);border:1.5px solid color-mix(in srgb,var(--accent) 35%,transparent);display:grid;place-items:center;color:var(--accent)}
+  .clip .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .clip .th svg{width:30px;height:30px}
+  .clip .ci{min-width:0;display:flex;flex-direction:column;gap:2px}
+  .clip .ci b{font-size:16px;font-weight:600}
+  .clip .ci span{color:var(--muted);font-size:14px}
+  .tag{align-self:flex-start;margin-top:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--surface-2);color:var(--muted)}
+  .more{display:block;margin:22px auto 0;padding:11px 22px;border-radius:12px;background:var(--surface);border:1px solid var(--line);font-weight:600}
+  .loading{display:flex;flex-direction:column;align-items:center;gap:14px;color:var(--muted);padding:70px 20px;text-align:center}
+  .loading .ring{border-color:var(--line);border-top-color:var(--accent)}
+  .note{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--warn);border-radius:10px;padding:10px 14px;margin-bottom:14px;color:var(--muted);font-size:14px}
+  .player{position:sticky;top:76px;z-index:4;background:#000;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);margin-bottom:8px}
+  .player video{display:block;width:100%;max-height:52vh;background:#000}
+  .player .pbar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);color:var(--text)}
+  .player .pbar b{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .player .pbar button{padding:8px 14px;border-radius:10px;background:var(--surface-2);font-weight:600;font-size:14px}
+  .player .pbar button.primary{background:var(--accent);color:#fff}
+  .player .wait{position:absolute;inset:0 0 52px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;background:rgba(0,0,0,.6);text-align:center;padding:20px}
+
+  /* accesso */
+  .login{max-width:400px;margin:9vh auto 0;padding:34px;background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow)}
+  .login .logo{width:64px;height:64px;border-radius:16px;margin-bottom:18px}
+  .login h1{margin:0 0 6px;font-size:24px;letter-spacing:-.3px}
+  .login p{color:var(--muted);margin:0 0 20px;font-size:14px}
+  label{display:block;font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 6px}
+  input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit}
   input:focus{outline:2px solid var(--accent);border-color:transparent}
-  .login button{width:100%;margin-top:18px;padding:11px}
-  .err{color:#fca5a5;font-size:14px;margin-top:12px;min-height:1em}
-  /* griglia */
-  main{padding:20px;max-width:1400px;margin:0 auto}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
-  .cam{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .view{position:relative;aspect-ratio:16/9;background:#000;display:flex;align-items:center;justify-content:center}
-  .view img,.view video{width:100%;height:100%;object-fit:contain;display:block}
-  .badge{position:absolute;top:10px;left:10px;background:var(--live);color:#fff;font-size:12px;font-weight:600;padding:3px 8px;border-radius:6px;letter-spacing:.04em}
-  .spinner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);color:#fff;font-size:14px}
-  .meta{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-  .meta h3{margin:0;font-size:15px}
-  .info{color:var(--muted);font-size:12px}
-  .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-  @keyframes recblink{50%{opacity:.35}}
-  .badge.rec{animation:recblink 1s infinite}
-  .empty{color:var(--muted);text-align:center;padding:60px 0}
-  .full{position:fixed;inset:0;z-index:10;border-radius:0;display:flex;flex-direction:column}
-  .full .view{flex:1;aspect-ratio:auto}
-  @media (max-width:500px){main{padding:16px}.grid{grid-template-columns:1fr}}
+  .btn{width:100%;margin-top:22px;padding:13px;border-radius:12px;background:var(--accent);color:#fff;font-weight:600;font-size:16px}
+  .btn:hover{filter:brightness(1.06)}
+  .err{color:var(--live);font-size:14px;margin-top:14px;min-height:1em}
+  .login-tools{position:fixed;top:14px;right:16px}
+
+  /* avvisi */
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:30;background:var(--text);color:var(--bg);padding:11px 18px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);max-width:min(92vw,620px);text-align:center}
+  .closed{padding:80px 20px;text-align:center}
+
+  @media (max-width:640px){
+    .bar{padding:8px 12px;gap:8px;flex-wrap:wrap}
+    .brand span{display:none}
+    .tabs{order:3;flex-basis:100%;margin-left:0}
+    .nav{margin-left:0}
+    .nav button{padding:7px 10px}
+    .clip .th{flex-basis:112px}
+    .player{top:118px}
+    .tab{font-size:15px;padding:10px 12px}
+    main{padding:16px 14px 50px}
+    .grid{grid-template-columns:1fr;gap:18px}
+    #systems{grid-template-columns:1fr}
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1><span class="dot"></span>MatteoEye</h1>
-  <div id="topActions" class="hidden">
-    <button id="refreshAll">Aggiorna</button>
-    <button id="logoutBtn">Esci</button>
+<header id="header" class="hidden">
+  <div class="bar">
+    <div class="brand"><img src="/static/logo.svg" alt=""><span>Matteo<b>Eye</b></span></div>
+    <div class="nav" id="nav"><button data-view="home" class="on"></button><button data-view="clips"></button></div>
+    <div class="tools">
+      <button class="icon-btn" id="refreshBtn" title="Aggiorna"></button>
+      <button class="icon-btn themeBtn" title="Tema chiaro/scuro"></button>
+      <button class="icon-btn" id="menuBtn" title="Altro"></button>
+      <div class="menu hidden" id="menu">
+        <button id="logoutBtn"></button>
+        <button id="quitBtn" class="danger hidden"></button>
+      </div>
+    </div>
   </div>
-  <button id="quitBtn" class="hidden" title="Spegne il programma MatteoEye">Chiudi MatteoEye</button>
 </header>
 
-<!-- Login -->
+<!-- Accesso -->
+<div class="login-tools hidden" id="loginTools"><button class="icon-btn themeBtn" title="Tema chiaro/scuro"></button></div>
 <section id="loginBox" class="login hidden">
-  <h2>Accedi</h2>
+  <img class="logo" src="/static/logo.svg" alt="">
+  <h1>Accedi a MatteoEye</h1>
   <p>Usa lo stesso account dell'app Blink.</p>
   <form id="loginForm">
     <label for="email">Email</label>
     <input id="email" type="email" autocomplete="username" required>
     <label for="password">Password</label>
     <input id="password" type="password" autocomplete="current-password" required>
-    <button class="primary" type="submit">Entra</button>
+    <button class="btn" type="submit">Entra</button>
   </form>
   <form id="codeForm" class="hidden">
     <p>Blink ti ha inviato un codice via SMS o email. Inseriscilo qui.</p>
     <label for="code">Codice di verifica</label>
     <input id="code" inputmode="numeric" autocomplete="one-time-code" required>
-    <button class="primary" type="submit">Verifica</button>
+    <button class="btn" type="submit">Verifica</button>
   </form>
   <div class="err" id="loginErr"></div>
 </section>
 
 <!-- Telecamere -->
 <main id="app" class="hidden">
+  <h2 class="section">Dispositivi</h2>
   <div class="grid" id="grid"></div>
+  <section class="systems hidden" id="systemsBox"><h2 class="section">Sistemi</h2><div id="systems"></div></section>
+</main>
+
+<!-- Clip registrate da Blink -->
+<main id="clipsView" class="hidden">
+  <div class="player hidden" id="player">
+    <video id="pv" controls playsinline></video>
+    <div class="wait hidden" id="pwait"><div class="ring"></div><div id="pwaitText"></div></div>
+    <div class="pbar"><b id="ptitle"></b><button class="primary" id="psave">Salva</button><button id="pclose">Chiudi</button></div>
+  </div>
+  <div class="clipbar" id="clipbar"></div>
+  <div id="cliplist"></div>
 </main>
 
 <script>
 const $ = s => document.querySelector(s);
 const players = {}; // nome -> {player, video, badge, card, sid}
 const recs = {};    // nome -> {id, t0, timer, btn}  registrazioni in corso
+let CAMS = [], NETS = [];
 
+// ---------------------------------------------------------------- icone
+const I = {
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+  rec: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="#e5383b"/></svg>',
+  snap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8a2 2 0 0 1 2-2h2.5l1.5-2h6l1.5 2H19a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',
+  sound: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>',
+  mute: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="m16 9 5 6M21 9l-5 6"/></svg>',
+  refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>',
+  dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"/></svg>',
+  power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/></svg>',
+  cloud: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M7 18h10.5a4 4 0 0 0 .6-7.95A6 6 0 0 0 6.5 9.6 4.2 4.2 0 0 0 7 18z"/></svg>',
+  temp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/></svg>',
+  wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 8.8a15 15 0 0 1 20 0M5 12.4a10 10 0 0 1 14 0M8.5 15.9a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1" fill="currentColor"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>',
+  film: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9.5 5 2.5-5 2.5z" fill="currentColor"/></svg>',
+  cam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="2"/><path d="m16 10.5 5-3v9l-5-3z"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/></svg>',
+};
+const battery = low => `<svg viewBox="0 0 28 16" width="26" height="16" fill="none"><rect x="1" y="1.5" width="22" height="13" rx="3" stroke="currentColor" stroke-width="2"/><rect x="24.5" y="5.5" width="2.5" height="5" rx="1" fill="currentColor"/><rect x="4" y="4.5" width="${low ? 4 : 16}" height="7" rx="1.2" fill="${low ? "#e5383b" : "currentColor"}"/></svg>`;
+
+// ---------------------------------------------------------------- tema
+function paintTheme() {
+  const dark = document.documentElement.dataset.theme === "dark";
+  document.querySelectorAll(".themeBtn").forEach(b => { b.innerHTML = dark ? I.sun : I.moon; b.title = dark ? "Tema chiaro" : "Tema scuro"; });
+}
+document.addEventListener("click", e => {
+  if (!e.target.closest(".themeBtn")) return;
+  const t = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+  document.documentElement.dataset.theme = t;
+  try { localStorage.setItem("me-theme", t); } catch {}
+  paintTheme();
+});
+paintTheme();
+$("#refreshBtn").innerHTML = I.refresh;
+$('#nav [data-view="home"]').innerHTML = I.home + "<span>Dispositivi</span>";
+$('#nav [data-view="clips"]').innerHTML = I.film + "<span>Clip</span>";
+$("#menuBtn").innerHTML = I.dots;
+$("#logoutBtn").innerHTML = I.logout + "Esci dall'account";
+$("#quitBtn").innerHTML = I.power + "Chiudi MatteoEye";
+
+// ---------------------------------------------------------------- utilita'
 async function api(path, opts = {}, retry = true) {
   const r = await fetch(path, {credentials: "same-origin", headers: {"Content-Type": "application/json"}, ...opts});
   let data = null; try { data = await r.json(); } catch {}
@@ -97,9 +313,31 @@ async function api(path, opts = {}, retry = true) {
   if (!r.ok) throw new Error((data && data.detail) || r.statusText);
   return data;
 }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const enc = encodeURIComponent;
+let toastTimer;
+function toast(msg, ms = 4500) {
+  let t = $(".toast"); if (!t) { t = document.createElement("div"); t.className = "toast"; document.body.appendChild(t); }
+  t.textContent = msg; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.remove(), ms);
+}
+function ago(ts) {
+  if (!ts) return "";
+  const s = Math.max(0, Date.now() / 1000 - ts);
+  if (s < 60) return "adesso";
+  if (s < 3600) return Math.floor(s / 60) + " min fa";
+  if (s < 86400) return Math.floor(s / 3600) + " h fa";
+  return Math.floor(s / 86400) + " g fa";
+}
 
-function showLogin() { $("#loginBox").classList.remove("hidden"); $("#app").classList.add("hidden"); $("#topActions").classList.add("hidden"); }
-function showApp() { $("#loginBox").classList.add("hidden"); $("#app").classList.remove("hidden"); $("#topActions").classList.remove("hidden"); loadCameras(); }
+function showLogin() {
+  $("#loginBox").classList.remove("hidden"); $("#loginTools").classList.remove("hidden");
+  ["#app", "#header"].forEach(s => $(s).classList.add("hidden"));
+}
+function showApp() {
+  $("#loginBox").classList.add("hidden"); $("#loginTools").classList.add("hidden");
+  $("#app").classList.remove("hidden"); $("#header").classList.remove("hidden");
+  loadAll();
+}
 
 // Modalita' programma: la pagina manda un battito al programma, che si spegne
 // da solo pochi minuti dopo che l'ultima pagina e' stata chiusa.
@@ -110,7 +348,7 @@ function startHeartbeat() {
   q.onclick = async () => {
     Object.keys(players).forEach(stopLive);
     try { await api("/api/quit", {method: "POST"}); } catch {}
-    document.body.innerHTML = '<main style="padding:40px;text-align:center"><h2>MatteoEye e\' chiuso.</h2><p>Puoi chiudere questa scheda. Per riaprirlo, avvia di nuovo il programma MatteoEye.</p></main>';
+    document.body.innerHTML = '<main class="closed"><h2>MatteoEye e\' chiuso.</h2><p>Puoi chiudere questa scheda. Per riaprirlo, avvia di nuovo il programma MatteoEye.</p></main>';
   };
 }
 
@@ -131,7 +369,6 @@ $("#loginForm").onsubmit = async e => {
   } catch (err) { $("#loginErr").textContent = err.message; }
   btn.disabled = false;
 };
-
 $("#codeForm").onsubmit = async e => {
   e.preventDefault(); const btn = e.submitter; btn.disabled = true; $("#loginErr").textContent = "";
   try { await api("/api/verify", {method: "POST", body: JSON.stringify({code: $("#code").value})}); showApp(); }
@@ -139,71 +376,166 @@ $("#codeForm").onsubmit = async e => {
   btn.disabled = false;
 };
 
+$("#menuBtn").onclick = e => { e.stopPropagation(); $("#menu").classList.toggle("hidden"); };
+document.addEventListener("click", e => { if (!e.target.closest("#menu")) $("#menu").classList.add("hidden"); });
 $("#logoutBtn").onclick = async () => { Object.keys(players).forEach(stopLive); await api("/api/logout", {method: "POST"}); location.reload(); };
-$("#refreshAll").onclick = () => loadCameras();
+$("#refreshBtn").onclick = () => view === "clips" ? loadClips(true) : loadAll();
 
-const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const enc = encodeURIComponent;
-
-async function loadCameras() {
-  let cams;
-  try { cams = await api("/api/cameras"); } catch (e) { if (/autenticato/i.test(e.message)) return showLogin(); throw e; }
-  const grid = $("#grid");
-  if (!cams.length) { grid.innerHTML = '<div class="empty">Nessuna telecamera trovata su questo account.</div>'; return; }
-  grid.innerHTML = cams.map(c => `
-    <article class="cam" data-name="${esc(c.name)}">
-      <div class="view">
-        <img src="/api/cameras/${enc(c.name)}/thumbnail?t=${Date.now()}" alt="" onerror="this.style.display='none'">
-      </div>
-      <div class="meta">
-        <div>
-          <h3>${esc(c.name)}</h3>
-          <div class="info">${[c.battery && "Batteria " + c.battery, c.temperature != null && c.temperature + "°C", c.armed ? "Attiva" : "Disattiva"].filter(Boolean).join(" · ")}</div>
-        </div>
-        <div class="actions">
-          <button data-act="snap">Foto</button>
-          <button data-act="full" class="hidden">⤢</button>
-          <button data-act="rec" title="Registra quello che vede la telecamera in un file video">● Registra</button>
-          <button data-act="live" class="primary">Live</button>
-        </div>
-      </div>
-    </article>`).join("");
+// ---------------------------------------------------------------- Dispositivi / Clip
+let view = "home";
+function showView(v) {
+  view = v;
+  document.querySelectorAll("#nav button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+  $("#app").classList.toggle("hidden", v !== "home");
+  $("#clipsView").classList.toggle("hidden", v !== "clips");
+  if (v === "home") renderGrid(); else if (!CLIPLIST) loadClips(false);
 }
+$("#nav").onclick = e => { const b = e.target.closest("button"); if (b && b.dataset.view !== view) showView(b.dataset.view); };
+
+// ---------------------------------------------------------------- sistemi (tab) e telecamere
+async function loadAll() {
+  try { [CAMS, NETS] = await Promise.all([api("/api/cameras"), api("/api/networks").catch(() => [])]); }
+  catch (e) { if (/autenticato/i.test(e.message)) return showLogin(); toast(e.message); return; }
+  // sistemi: quelli dell'account, piu' eventuali reti trovate solo sulle telecamere
+  const names = NETS.map(n => n.name);
+  CAMS.forEach(c => { if (c.network && !names.includes(c.network)) { names.push(c.network); NETS.push({name: c.network, armed: null}); } });
+  // telecamere in ordine di sistema, poi di nome
+  CAMS.sort((a, b) => (names.indexOf(a.network) - names.indexOf(b.network)) || a.name.localeCompare(b.name));
+  renderGrid();
+}
+
+// Nome mostrato: il sistema (es. "Casa davanti") se ha una sola telecamera, altrimenti
+// "sistema · telecamera". Le telecamere Blink si chiamano spesso solo "Blink", "Blink 2"...
+function camLabel(name, network) {
+  if (!network) return name;
+  return CAMS.filter(c => c.network === network).length <= 1 ? network : `${network} · ${name}`;
+}
+
+function renderGrid() {
+  const grid = $("#grid");
+  // le carte con una live in corso non vengono ridisegnate
+  const keep = {}; Object.entries(players).forEach(([n, p]) => keep[n] = p.card);
+  grid.innerHTML = "";
+  if (!CAMS.length) grid.innerHTML = '<div class="empty">Nessuna telecamera trovata su questo account.</div>';
+  CAMS.forEach(c => grid.appendChild(keep[c.name] || cardFor(c)));
+  renderSystems();
+}
+
+function cardFor(c) {
+  const el = document.createElement("article");
+  el.className = "cam"; el.dataset.name = c.name;
+  const low = String(c.battery || "").toLowerCase() === "low";
+  const label = camLabel(c.name, c.network);
+  el.innerHTML = `
+    <div class="view">
+      <img src="/api/cameras/${enc(c.name)}/thumbnail?t=${Date.now()}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="name">${esc(label)}</div>
+      ${c.thumb_ts ? `<div class="age" data-ts="${c.thumb_ts}">${ago(c.thumb_ts)}</div>` : ""}
+      <button class="play" data-act="live" title="Guarda in diretta">${I.play}</button>
+      <div class="pills">
+        ${c.battery ? `<span class="pill${low ? " bat-low" : ""}" title="Batteria ${esc(c.battery)}">${battery(low)}</span>` : ""}
+        <span class="pill group">
+          <button data-act="sound" class="hidden" title="Audio">${I.mute}</button>
+          <button data-act="stop" class="hidden" title="Chiudi la diretta">${I.close}</button>
+          <button data-act="full" class="hidden" title="Schermo intero (Esc per uscire)">${I.full}</button>
+          <button data-act="snap" title="Nuova foto">${I.snap}</button>
+          <button data-act="rec" title="Registra in un file video">${I.rec}</button>
+        </span>
+      </div>
+    </div>
+    <div class="meta">
+      ${label !== c.name ? `<span>${I.cam}${esc(c.name)}</span>` : ""}
+      ${c.temperature != null ? `<span>${I.temp}${esc(c.temperature)}°C</span>` : ""}
+      ${c.wifi != null ? `<span>${I.wifi}Wi-Fi ${esc(c.wifi)}</span>` : ""}
+      <span>${I.shield}Movimento ${c.armed ? "attivo" : "spento"}</span>
+    </div>`;
+  return el;
+}
+
+setInterval(() => document.querySelectorAll(".age[data-ts]").forEach(a => a.textContent = ago(+a.dataset.ts)), 30000);
 
 $("#grid").onclick = async e => {
   const btn = e.target.closest("button"); if (!btn) return;
   const card = btn.closest(".cam"); const name = card.dataset.name;
-  if (btn.dataset.act === "live") players[name] ? stopLive(name) : startLive(name, card, btn);
-  if (btn.dataset.act === "snap") snap(name, card, btn);
-  if (btn.dataset.act === "rec") recs[name] ? stopRecording(name) : startRecording(name, card, btn);
-  if (btn.dataset.act === "full") card.classList.toggle("full");
+  const act = btn.dataset.act;
+  if (act === "live") players[name] ? stopLive(name) : startLive(name, card);
+  if (act === "stop") stopLive(name);
+  if (act === "snap") snap(name, card, btn);
+  if (act === "rec") recs[name] ? stopRecording(name) : startRecording(name, card, btn);
+  if (act === "full") card.classList.toggle("full");
+  if (act === "sound" && players[name]) {
+    const v = players[name].video; v.muted = !v.muted; btn.innerHTML = v.muted ? I.mute : I.sound;
+    if (!v.muted) v.play().catch(() => {});
+  }
+};
+// doppio clic sul video: schermo intero
+$("#grid").ondblclick = e => { const c = e.target.closest(".cam.live"); if (c && !e.target.closest("button")) c.classList.toggle("full"); };
+
+// ---------------------------------------------------------------- sistemi: Sync Module e Attivo / Disattivato
+function renderSystems() {
+  const nets = NETS.filter(n => n.armed != null || n.online != null);
+  $("#systemsBox").classList.toggle("hidden", !nets.length);
+  $("#systems").innerHTML = nets.map(n => {
+    const online = n.online !== false;
+    return `
+      <div class="sys" data-net="${esc(n.name)}">
+        <div class="sys-name"><b>${esc(n.name)}</b>
+          <span class="st${online ? "" : " off"}">${I.cloud}Sync Module ${online ? "online" : "offline"}</span></div>
+        ${n.armed != null ? `<div class="seg">
+          <button data-arm="0" class="${n.armed ? "" : "on off-state"}">Disattivato</button>
+          <button data-arm="1" class="${n.armed ? "on" : ""}">Attivo</button>
+        </div>` : ""}
+      </div>`;
+  }).join("");
+}
+$("#systems").onclick = async e => {
+  const b = e.target.closest(".seg button"); if (!b) return;
+  const row = b.closest(".sys"); const net = NETS.find(n => n.name === row.dataset.net); if (!net) return;
+  const want = b.dataset.arm === "1"; if (net.armed === want) return;
+  const prev = net.armed; net.armed = want; renderSystems();
+  const btns = () => document.querySelectorAll(`.sys[data-net="${CSS.escape(net.name)}"] .seg button`);
+  btns().forEach(x => x.disabled = true);
+  try { await api(`/api/networks/${enc(net.name)}/arm`, {method: "POST", body: JSON.stringify({armed: want})}); toast(`${net.name}: sistema ${want ? "attivato" : "disattivato"}`); }
+  catch (err) { net.armed = prev; toast("Non riesco a cambiare lo stato: " + err.message); }
+  renderSystems();
 };
 
-function setOverlay(card, text) {
-  let o = card.querySelector(".spinner");
+// ---------------------------------------------------------------- foto e live
+function setOverlay(card, text, busy = false) {
+  let o = card.querySelector(".overlay");
   if (!text) { o && o.remove(); return; }
-  if (!o) { o = document.createElement("div"); o.className = "spinner"; card.querySelector(".view").appendChild(o); }
-  o.textContent = text;
+  if (!o) { o = document.createElement("div"); o.className = "overlay"; card.querySelector(".view").appendChild(o); }
+  o.innerHTML = (busy ? '<div class="ring"></div>' : "") + `<div>${esc(text)}</div>`;
 }
 
 async function snap(name, card, btn) {
-  btn.disabled = true; setOverlay(card, "Scatto una nuova foto…");
-  try { await api(`/api/cameras/${enc(name)}/snap`, {method: "POST"}); card.querySelector("img").style.display = ""; card.querySelector("img").src = `/api/cameras/${enc(name)}/thumbnail?t=${Date.now()}`; }
-  catch (err) { alert(err.message); }
+  btn.disabled = true; setOverlay(card, "Scatto una nuova foto…", true);
+  try {
+    await api(`/api/cameras/${enc(name)}/snap`, {method: "POST"});
+    const img = card.querySelector("img"); img.style.visibility = ""; img.src = `/api/cameras/${enc(name)}/thumbnail?t=${Date.now()}`;
+    const age = card.querySelector(".age"); if (age) { age.dataset.ts = Math.floor(Date.now() / 1000); age.textContent = "adesso"; }
+  } catch (err) { toast(err.message); }
   setOverlay(card); btn.disabled = false;
 }
 
-async function startLive(name, card, btn) {
-  btn.disabled = true; setOverlay(card, "Collegamento alla telecamera…");
+function liveUi(card, on) {
+  card.classList.toggle("live", on);
+  ["stop", "full", "sound"].forEach(a => card.querySelector(`[data-act="${a}"]`).classList.toggle("hidden", !on));
+  card.querySelector('[data-act="sound"]').innerHTML = I.mute;
+}
+
+async function startLive(name, card) {
+  const play = card.querySelector(".play"); play.disabled = true;
+  setOverlay(card, "Collegamento alla telecamera…", true);
   try {
     const r = await api(`/api/cameras/${enc(name)}/live`, {method: "POST"});
+    if (!(window.mpegts && mpegts.isSupported())) throw new Error("Questo browser non supporta la live: usa il programma MatteoEye oppure Chrome");
     const view = card.querySelector(".view");
     const video = document.createElement("video");
-    video.autoplay = true; video.muted = true; video.playsInline = true; video.controls = true;
-    view.querySelector("img").style.display = "none";
+    video.autoplay = true; video.muted = true; video.playsInline = true;
+    view.querySelector("img").style.visibility = "hidden";
     view.prepend(video);
     const badge = document.createElement("span"); badge.className = "badge"; badge.textContent = "LIVE"; view.appendChild(badge);
-    if (!(window.mpegts && mpegts.isSupported())) throw new Error("Questo browser non supporta la live: usa il programma MatteoEye oppure Chrome");
     // Il video arriva in continuo via WebSocket; il lettore parte dal primo fotogramma chiave
     const wsUrl = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + r.ws;
     const player = mpegts.createPlayer({type: "mpegts", isLive: true, url: wsUrl}, {
@@ -218,10 +550,9 @@ async function startLive(name, card, btn) {
     video.addEventListener("playing", () => setOverlay(card), {once: true});
     video.addEventListener("ended", () => stopLive(name));
     players[name] = {player, video, badge, card, sid: r.sid};
-    btn.textContent = "Stop"; btn.classList.replace("primary", "danger");
-    card.querySelector('[data-act="full"]').classList.remove("hidden");
+    liveUi(card, true);
   } catch (err) { setOverlay(card, err.message); setTimeout(() => setOverlay(card), 4000); }
-  btn.disabled = false;
+  play.disabled = false;
 }
 
 function stopLive(name) {
@@ -229,28 +560,165 @@ function stopLive(name) {
   delete players[name];
   if (p.player) { try { p.player.pause(); p.player.unload(); p.player.detachMediaElement(); p.player.destroy(); } catch {} }
   p.video.remove(); p.badge.remove();
-  const card = p.card; card.classList.remove("full"); setOverlay(card);
-  card.querySelector("img").style.display = "";
-  card.querySelector("img").src = `/api/cameras/${enc(name)}/thumbnail?t=${Date.now()}`;
-  const b = card.querySelector('[data-act="live"]'); b.textContent = "Live"; b.classList.replace("danger", "primary");
-  card.querySelector('[data-act="full"]').classList.add("hidden");
+  const card = p.card; card.classList.remove("full"); setOverlay(card); liveUi(card, false);
+  const img = card.querySelector("img"); img.style.visibility = ""; img.src = `/api/cameras/${enc(name)}/thumbnail?t=${Date.now()}`;
   const del = () => fetch(`/api/cameras/${enc(name)}/live?sid=${enc(p.sid)}`, {method: "DELETE", credentials: "same-origin"});
   recs[name] ? stopRecording(name).finally(del) : del();
+  if (!document.body.contains(card)) renderGrid(); // carta di un altro sistema: la si toglie dalla griglia
 }
 
-// ---- registrazione
+// Quando la finestra torna visibile il browser puo' aver smesso di disegnare il video
+// (finestra coperta o ridotta a icona): si salta al punto piu' recente della diretta.
+function catchUp() {
+  Object.values(players).forEach(({video}) => {
+    try {
+      const b = video.buffered; if (!b.length) return;
+      const end = b.end(b.length - 1);
+      if (end - video.currentTime > 1.5) video.currentTime = Math.max(0, end - 0.4);
+      if (video.paused) video.play().catch(() => {});
+    } catch {}
+  });
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) catchUp(); });
+window.addEventListener("focus", catchUp);
+
+// Salvataggio di un video gia' pronto sul computer (registrazione o clip):
+// "Salva con nome" nella finestra del programma, download nel browser.
+async function saveFile(r) {
+  const sv = await api(`/api/recordings/${enc(r.id)}/save`, {method: "POST"});
+  if (sv.saved) toast("Salvato in " + sv.saved, 7000);
+  else if (sv.download) {
+    const a = document.createElement("a"); a.href = sv.download; a.download = r.filename; document.body.appendChild(a); a.click(); a.remove();
+    toast("Video scaricato: " + r.filename, 7000);
+  } else {
+    toast("Video in " + sv.path, 7000);
+    fetch(`/api/recordings/${enc(r.id)}/reveal`, {method: "POST", credentials: "same-origin"}).catch(() => {});
+  }
+}
+
+// ---------------------------------------------------------------- clip registrate da Blink
+let CLIPLIST = null, clipNotes = [], clipCam = "", clipShown = 60, clipCur = null, clipsLoading = false;
+const dayKey = t => { const d = new Date(t * 1000); return d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate(); };
+function dayLabel(t) {
+  const d = new Date(t * 1000), now = new Date(), y = new Date(now); y.setDate(now.getDate() - 1);
+  if (d.toDateString() === now.toDateString()) return "Oggi";
+  if (d.toDateString() === y.toDateString()) return "Ieri";
+  const s = d.toLocaleDateString("it-IT", {weekday: "long", day: "numeric", month: "long", year: d.getFullYear() === now.getFullYear() ? undefined : "numeric"});
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+// nome della telecamera per i filtri delle clip (lo stesso delle carte)
+const clipName = cam => { const c = (CLIPLIST || []).find(x => x.camera === cam); return camLabel(cam, c && c.network); };
+const hhmm = t => new Date(t * 1000).toLocaleTimeString("it-IT", {hour: "2-digit", minute: "2-digit"});
+
+async function loadClips(refresh) {
+  if (clipsLoading) return; clipsLoading = true;
+  $("#clipbar").innerHTML = "";
+  $("#cliplist").innerHTML = `<div class="loading"><div class="ring"></div><div>Cerco le clip…<br><small>Se sono sulla chiavetta del Sync Module servono circa 30 secondi.</small></div></div>`;
+  try {
+    const r = await api(`/api/clips?days=30${refresh ? "&refresh=1" : ""}`);
+    CLIPLIST = r.clips; clipNotes = r.notes || []; clipShown = 60;
+    renderClips();
+  } catch (err) {
+    $("#cliplist").innerHTML = `<div class="loading">${esc("Non riesco a leggere le clip: " + err.message)}<button class="more" data-retry="1">Riprova</button></div>`;
+  }
+  clipsLoading = false;
+}
+
+function renderClips() {
+  const cams = [...new Set(CLIPLIST.map(c => c.camera))].sort((a, b) => clipName(a).localeCompare(clipName(b)));
+  if (clipCam && !cams.includes(clipCam)) clipCam = "";
+  $("#clipbar").innerHTML = [`<button class="chip${clipCam ? "" : " on"}" data-cam="">Tutte</button>`]
+    .concat(cams.map(c => `<button class="chip${c === clipCam ? " on" : ""}" data-cam="${esc(c)}">${esc(clipName(c))}</button>`))
+    .concat([`<span class="spacer"></span><button class="chip" data-reload="1">Aggiorna elenco</button>`]).join("");
+  const list = CLIPLIST.filter(c => !clipCam || c.camera === clipCam);
+  let html = clipNotes.map(n => `<div class="note">${esc(n)}</div>`).join("");
+  if (!list.length) html += '<div class="empty">Nessuna clip negli ultimi 30 giorni.</div>';
+  const shown = list.slice(0, clipShown);
+  const groups = [];
+  shown.forEach(c => {
+    const k = dayKey(c.time);
+    if (!groups.length || groups[groups.length - 1].k !== k) groups.push({k, t: c.time, items: []});
+    groups[groups.length - 1].items.push(c);
+  });
+  groups.forEach(g => {
+    const total = list.filter(c => dayKey(c.time) === g.k).length;
+    html += `<div class="day"><b>${esc(dayLabel(g.t))}</b><span>${total} ${total === 1 ? "evento" : "eventi"}</span></div><div class="clips">`;
+    html += g.items.map(c => `
+      <button class="clip${clipCur && clipCur.id === c.id ? " on" : ""}" data-id="${esc(c.id)}">
+        <span class="th">${I.play}${c.thumb ? `<img src="/api/clips/${enc(c.id)}/thumbnail" alt="" loading="lazy" onerror="this.remove()">` : ""}</span>
+        <span class="ci"><b>${esc(camLabel(c.camera, c.network))}</b><span>${hhmm(c.time)}</span>
+        <span class="tag">${c.source === "local" ? "Chiavetta USB" : "Cloud"}</span></span>
+      </button>`).join("") + "</div>";
+  });
+  if (list.length > clipShown) html += `<button class="more" id="moreClips">Mostra altre (${list.length - clipShown})</button>`;
+  $("#cliplist").innerHTML = html;
+}
+
+$("#clipbar").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.reload) return loadClips(true);
+  clipCam = b.dataset.cam; clipShown = 60; renderClips();
+};
+$("#cliplist").onclick = e => {
+  if (e.target.closest("[data-retry]")) return loadClips(true);
+  if (e.target.closest("#moreClips")) { clipShown += 60; return renderClips(); }
+  const b = e.target.closest(".clip"); if (!b) return;
+  const c = CLIPLIST.find(x => x.id === b.dataset.id); if (c) openClip(c);
+};
+
+function openClip(c) {
+  clipCur = c;
+  document.querySelectorAll(".clip.on").forEach(x => x.classList.remove("on"));
+  const item = document.querySelector(`.clip[data-id="${CSS.escape(c.id)}"]`); if (item) item.classList.add("on");
+  const pv = $("#pv"), wait = $("#pwait");
+  $("#player").classList.remove("hidden");
+  $("#ptitle").textContent = `${camLabel(c.camera, c.network)} · ${dayLabel(c.time)} ${hhmm(c.time)}`;
+  $("#pwaitText").textContent = c.source === "local" ? "Il Sync Module sta caricando la clip dalla chiavetta…" : "Scarico la clip…";
+  wait.classList.remove("hidden"); wait.querySelector(".ring").classList.remove("hidden");
+  const url = `/api/clips/${enc(c.id)}/video`;
+  pv.oncanplay = () => {
+    if (clipCur !== c) return;
+    wait.classList.add("hidden"); pv.play().catch(() => {});
+    // ora la clip e' sul computer: compare la sua miniatura
+    const th = item && item.querySelector(".th");
+    c.thumb = true;
+    if (th && !th.querySelector("img")) th.insertAdjacentHTML("beforeend", `<img src="/api/clips/${enc(c.id)}/thumbnail?t=${Date.now()}" alt="" onerror="this.remove()">`);
+  };
+  pv.onerror = async () => {
+    if (clipCur !== c || !pv.getAttribute("src")) return;
+    let msg = "Clip non disponibile";
+    try { const r = await fetch(url, {credentials: "same-origin"}); const d = await r.json(); msg = d.detail || msg; } catch {}
+    wait.querySelector(".ring").classList.add("hidden"); $("#pwaitText").textContent = msg;
+  };
+  pv.src = url;
+  $("#player").scrollIntoView({block: "nearest", behavior: "smooth"});
+}
+$("#pclose").onclick = () => {
+  const pv = $("#pv"); clipCur = null; pv.pause(); pv.removeAttribute("src"); pv.load();
+  $("#player").classList.add("hidden");
+  document.querySelectorAll(".clip.on").forEach(x => x.classList.remove("on"));
+};
+$("#psave").onclick = async () => {
+  if (!clipCur) return;
+  const b = $("#psave"); b.disabled = true;
+  try { await saveFile(await api(`/api/clips/${enc(clipCur.id)}/keep`, {method: "POST"})); }
+  catch (err) { toast("Non riesco a salvare la clip: " + err.message); }
+  b.disabled = false;
+};
+
+// ---------------------------------------------------------------- registrazione
 const fmtTime = ms => { const s = Math.floor(ms / 1000); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
 
 async function startRecording(name, card, btn) {
   btn.disabled = true;
   try {
-    if (!players[name]) { await startLive(name, card, card.querySelector('[data-act="live"]')); if (!players[name]) return; }
+    if (!players[name]) { await startLive(name, card); if (!players[name]) return; }
     const r = await api(`/api/cameras/${enc(name)}/record`, {method: "POST"});
     const rec = recs[name] = {id: r.id, t0: Date.now(), btn};
-    btn.classList.add("danger");
-    const tick = () => { btn.textContent = "■ Stop " + fmtTime(Date.now() - rec.t0); };
+    btn.innerHTML = I.stop; btn.title = "Ferma la registrazione"; btn.classList.add("rec-on");
+    const badge = players[name].badge; badge.classList.add("rec");
+    const tick = () => { badge.textContent = "● REC " + fmtTime(Date.now() - rec.t0); };
     tick(); rec.timer = setInterval(tick, 1000);
-    const badge = players[name].badge; badge.textContent = "● REC"; badge.classList.add("rec");
   } catch (err) { setOverlay(card, err.message); setTimeout(() => setOverlay(card), 4000); }
   btn.disabled = false;
 }
@@ -258,23 +726,14 @@ async function startRecording(name, card, btn) {
 async function stopRecording(name) {
   const rec = recs[name]; if (!rec) return;
   delete recs[name]; clearInterval(rec.timer);
-  const card = rec.btn.closest(".cam");
-  rec.btn.textContent = "● Registra"; rec.btn.classList.remove("danger");
+  rec.btn.innerHTML = I.rec; rec.btn.title = "Registra in un file video"; rec.btn.classList.remove("rec-on");
   if (players[name]) { players[name].badge.textContent = "LIVE"; players[name].badge.classList.remove("rec"); }
-  setOverlay(card, "Salvo la registrazione…");
+  toast("Salvo la registrazione…", 20000);
   try {
     const r = await api(`/api/cameras/${enc(name)}/record/stop`, {method: "POST"});
-    const sv = await api(`/api/recordings/${enc(r.id)}/save`, {method: "POST"});
-    if (sv.saved) setOverlay(card, "Salvato: " + sv.saved);
-    else if (sv.download) {
-      const a = document.createElement("a"); a.href = sv.download; a.download = r.filename; document.body.appendChild(a); a.click(); a.remove();
-      setOverlay(card, "Scaricato: " + r.filename);
-    } else {
-      setOverlay(card, "Registrazione in: " + sv.path);
-      fetch(`/api/recordings/${enc(r.id)}/reveal`, {method: "POST", credentials: "same-origin"}).catch(() => {});
-    }
-  } catch (err) { setOverlay(card, "Registrazione: " + err.message); }
-  setTimeout(() => setOverlay(card), 7000);
+    await saveFile(r);
+  } catch (err) { toast("Registrazione: " + err.message, 7000); }
+  setTimeout(catchUp, 500);
 }
 
 window.addEventListener("beforeunload", () => {

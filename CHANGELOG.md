@@ -4,6 +4,18 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+- **Clips**: past motion clips from the Blink cloud or from the Sync Module's USB stick, grouped by day, with in-page playback and *Save*.
+- **Arm / disarm** each system (Sync Module) from the new *Sistemi* list.
+- **Light and dark theme**, following the system setting and remembering the choice.
+
+### Changed
+- Redesigned interface: all cameras on one page, named after their system, large thumbnails with age badge, round action buttons, Sync Module status.
+
+### Fixed
+- Windows: starting without a console (`pythonw`) no longer opens an empty window for every ffmpeg process. Those windows covered the browser, which then stopped drawing the live video while the audio kept playing.
+- The live view jumps back to the most recent frame when the window becomes visible again.
+
 ## [1.0.0] - 2026-11-07
 
 ### Added
