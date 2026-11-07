@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MatteoEye</title>
+<script src="/static/mpegts.js"></script>
+<style>
+  :root{--bg:#0f1115;--card:#181b22;--line:#262a33;--text:#e8eaef;--muted:#8b93a3;--accent:#3b82f6;--live:#ef4444;--ok:#22c55e}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)}
+  header h1{font-size:18px;margin:0;display:flex;gap:8px;align-items:center}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
+  button{font:inherit;border:1px solid var(--line);background:#222733;color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer}
+  button:hover{border-color:#3a4150}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  button.danger{background:var(--live);border-color:var(--live);color:#fff}
+  button:disabled{opacity:.5;cursor:wait}
+  .hidden{display:none!important}
+  /* login */
+  .login{max-width:360px;margin:12vh auto;padding:28px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+  .login h2{margin:0 0 4px;font-size:20px}
+  .login p{color:var(--muted);margin:0 0 18px;font-size:14px}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
+  input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:#0f1115;color:var(--text);font:inherit}
+  input:focus{outline:2px solid var(--accent);border-color:transparent}
+  .login button{width:100%;margin-top:18px;padding:11px}
+  .err{color:#fca5a5;font-size:14px;margin-top:12px;min-height:1em}
+  /* griglia */
+  main{padding:20px;max-width:1400px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
+  .cam{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  .view{position:relative;aspect-ratio:16/9;background:#000;display:flex;align-items:center;justify-content:center}
+  .view img,.view video{width:100%;height:100%;object-fit:contain;display:block}
+  .badge{position:absolute;top:10px;left:10px;background:var(--live);color:#fff;font-size:12px;font-weight:600;padding:3px 8px;border-radius:6px;letter-spacing:.04em}
+  .spinner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);color:#fff;font-size:14px}
+  .meta{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .meta h3{margin:0;font-size:15px}
+  .info{color:var(--muted);font-size:12px}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+  @keyframes recblink{50%{opacity:.35}}
+  .badge.rec{animation:recblink 1s infinite}
+  .empty{color:var(--muted);text-align:center;padding:60px 0}
+  .full{position:fixed;inset:0;z-index:10;border-radius:0;display:flex;flex-direction:column}
+  .full .view{flex:1;aspect-ratio:auto}
+  @media (max-width:500px){main{padding:16px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1><span class="dot"></span>MatteoEye</h1>
+  <div id="topActions" class="hidden">
+    <button id="refreshAll">Aggiorna</button>
+    <button id="logoutBtn">Esci</button>
+  </div>
+  <button id="quitBtn" class="hidden" title="Spegne il programma MatteoEye">Chiudi MatteoEye</button>
+</header>
+
+<!-- Login -->
+<section id="loginBox" class="login hidden">
+  <h2>Accedi</h2>
+  <p>Usa lo stesso account dell'app Blink.</p>
+  <form id="loginForm">
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="password">Password</label>
+    <input id="password" type="password" autocomplete="current-password" required>
+    <button class="primary" type="submit">Entra</button>
+  </form>
+  <form id="codeForm" class="hidden">
+    <p>Blink ti ha inviato un codice via SMS o email. Inseriscilo qui.</p>
+    <label for="code">Codice di verifica</label>
+    <input id="code" inputmode="numeric" autocomplete="one-time-code" required>
+    <button class="primary" type="submit">Verifica</button>
+  </form>
+  <div class="err" id="loginErr"></div>
+</section>
+
+<!-- Telecamere -->
+<main id="app" class="hidden">
+  <div class="grid" id="grid"></div>
+</main>
+
+<script>
+const $ = s => document.querySelector(s);
+const players = {}; // nome -> {player, video, badge, card, sid}
+const recs = {};    // nome -> {id, t0, timer, btn}  registrazioni in corso
+
+async function api(path, opts = {}, retry = true) {
+  const r = await fetch(path, {credentials: "same-origin", headers: {"Content-Type": "application/json"}, ...opts});
+  let data = null; try { data = await r.json(); } catch {}
+  // Sessione non valida (es. server riavviato): riprende la sessione salvata e riprova una volta
+  if (r.status === 401 && retry && !["/api/status", "/api/resume", "/api/login", "/api/verify"].includes(path)) {
+    try { await api("/api/resume", {method: "POST"}, false); return api(path, opts, false); } catch {}
+  }
+  if (!r.ok) throw new Error((data && data.detail) || r.statusText);
+  return data;
+}
+
+function showLogin() { $("#loginBox").classList.remove("hidden"); $("#app").classList.add("hidden"); $("#topActions").classList.add("hidden"); }
+function showApp() { $("#loginBox").classList.add("hidden"); $("#app").classList.remove("hidden"); $("#topActions").classList.remove("hidden"); loadCameras(); }
+
+// Modalita' programma: la pagina manda un battito al programma, che si spegne
+// da solo pochi minuti dopo che l'ultima pagina e' stata chiusa.
+function startHeartbeat() {
+  const ping = () => fetch("/api/ping", {method: "POST", credentials: "same-origin"}).catch(() => {});
+  ping(); setInterval(ping, 15000);
+  const q = $("#quitBtn"); q.classList.remove("hidden");
+  q.onclick = async () => {
+    Object.keys(players).forEach(stopLive);
+    try { await api("/api/quit", {method: "POST"}); } catch {}
+    document.body.innerHTML = '<main style="padding:40px;text-align:center"><h2>MatteoEye e\' chiuso.</h2><p>Puoi chiudere questa scheda. Per riaprirlo, avvia di nuovo il programma MatteoEye.</p></main>';
+  };
+}
+
+async function boot() {
+  const s = await api("/api/status");
+  if (s.app_mode) startHeartbeat();
+  if (s.logged_in) return showApp();
+  if (s.resumable) { try { await api("/api/resume", {method: "POST"}); return showApp(); } catch {} }
+  showLogin();
+}
+
+$("#loginForm").onsubmit = async e => {
+  e.preventDefault(); const btn = e.submitter; btn.disabled = true; $("#loginErr").textContent = "";
+  try {
+    const r = await api("/api/login", {method: "POST", body: JSON.stringify({email: $("#email").value, password: $("#password").value})});
+    if (r.need_2fa) { $("#loginForm").classList.add("hidden"); $("#codeForm").classList.remove("hidden"); $("#code").focus(); }
+    else showApp();
+  } catch (err) { $("#loginErr").textContent = err.message; }
+  btn.disabled = false;
+};
+
+$("#codeForm").onsubmit = async e => {
+  e.preventDefault(); const btn = e.submitter; btn.disabled = true; $("#loginErr").textContent = "";
+  try { await api("/api/verify", {method: "POST", body: JSON.stringify({code: $("#code").value})}); showApp(); }
+  catch (err) { $("#loginErr").textContent = err.message; }
+  btn.disabled = false;
+};
+
+$("#logoutBtn").onclick = async () => { Object.keys(players).forEach(stopLive); await api("/api/logout", {method: "POST"}); location.reload(); };
+$("#refreshAll").onclick = () => loadCameras();
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const enc = encodeURIComponent;
+
+async function loadCameras() {
+  let cams;
+  try { cams = await api("/api/cameras"); } catch (e) { if (/autenticato/i.test(e.message)) return showLogin(); throw e; }
+  const grid = $("#grid");
+  if (!cams.length) { grid.innerHTML = '<div class="empty">Nessuna telecamera trovata su questo account.</div>'; return; }
+  grid.innerHTML = cams.map(c => `
+    <article class="cam" data-name="${esc(c.name)}">
+      <div class="view">
+        <img src="/api/cameras/${enc(c.name)}/thumbnail?t=${Date.now()}" alt="" onerror="this.style.display='none'">
+      </div>
+      <div class="meta">
+        <div>
+          <h3>${esc(c.name)}</h3>
+          <div class="info">${[c.battery && "Batteria " + c.battery, c.temperature != null && c.temperature + "°C", c.armed ? "Attiva" : "Disattiva"].filter(Boolean).join(" · ")}</div>
+        </div>
+        <div class="actions">
+          <button data-act="snap">Foto</button>
+          <button data-act="full" class="hidden">⤢</button>
+          <button data-act="rec" title="Registra quello che vede la telecamera in un file video">● Registra</button>
+          <button data-act="live" class="primary">Live</button>
+        </div>
+      </div>
+    </article>`).join("");
+}
+
+$("#grid").onclick = async e => {
+  const btn = e.target.closest("button"); if (!btn) return;
+  const card = btn.closest(".cam"); const name = card.dataset.name;
+  if (btn.dataset.act === "live") players[name] ? stopLive(name) : startLive(name, card, btn);
+  if (btn.dataset.act === "snap") snap(name, card, btn);
+  if (btn.dataset.act === "rec") recs[name] ? stopRecording(name) : startRecording(name, card, btn);
+  if (btn.dataset.act === "full") card.classList.toggle("full");
+};
+
+function setOverlay(card, text) {
+  let o = card.querySelector(".spinner");
+  if (!text) { o && o.remove(); return; }
+  if (!o) { o = document.createElement("div"); o.className = "spinner"; card.querySelector(".view").appendChild(o); }
+  o.textContent = text;
+}
+
+async function snap(name, card, btn) {
+  btn.disabled = true; setOverlay(card, "Scatto una nuova foto…");
+  try { await api(`/api/cameras/${enc(name)}/snap`, {method: "POST"}); card.querySelector("img").style.display = ""; card.querySelector("img").src = `/api/cameras/${enc(name)}/thumbnail?t=${Date.now()}`; }
+  catch (err) { alert(err.message); }
+  setOverlay(card); btn.disabled = false;
+}
+
+async function startLive(name, card, btn) {
+  btn.disabled = true; setOverlay(card, "Collegamento alla telecamera…");
+  try {
+    const r = await api(`/api/cameras/${enc(name)}/live`, {method: "POST"});
+    const view = card.querySelector(".view");
+    const video = document.createElement("video");
+    video.autoplay = true; video.muted = true; video.playsInline = true; video.controls = true;
+    view.querySelector("img").style.display = "none";
+    view.prepend(video);
+    const badge = document.createElement("span"); badge.className = "badge"; badge.textContent = "LIVE"; view.appendChild(badge);
+    if (!(window.mpegts && mpegts.isSupported())) throw new Error("Questo browser non supporta la live: usa il programma MatteoEye oppure Chrome");
+    // Il video arriva in continuo via WebSocket; il lettore parte dal primo fotogramma chiave
+    const wsUrl = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + r.ws;
+    const player = mpegts.createPlayer({type: "mpegts", isLive: true, url: wsUrl}, {
+      enableWorker: true, enableStashBuffer: false, liveBufferLatencyChasing: true,
+      liveBufferLatencyMaxLatency: 2.0, liveBufferLatencyMinRemain: 0.5,
+      autoCleanupSourceBuffer: true, autoCleanupMaxBackwardDuration: 20, autoCleanupMinBackwardDuration: 10,
+    });
+    const ended = () => { if (players[name] && players[name].player === player) { stopLive(name); setOverlay(card, "Live terminata"); setTimeout(() => setOverlay(card), 2500); } };
+    player.on(mpegts.Events.ERROR, ended);
+    player.on(mpegts.Events.LOADING_COMPLETE, ended); // il server chiude il flusso quando Blink ferma la live
+    player.attachMediaElement(video); player.load(); player.play().catch(() => {});
+    video.addEventListener("playing", () => setOverlay(card), {once: true});
+    video.addEventListener("ended", () => stopLive(name));
+    players[name] = {player, video, badge, card, sid: r.sid};
+    btn.textContent = "Stop"; btn.classList.replace("primary", "danger");
+    card.querySelector('[data-act="full"]').classList.remove("hidden");
+  } catch (err) { setOverlay(card, err.message); setTimeout(() => setOverlay(card), 4000); }
+  btn.disabled = false;
+}
+
+function stopLive(name) {
+  const p = players[name]; if (!p) return;
+  delete players[name];
+  if (p.player) { try { p.player.pause(); p.player.unload(); p.player.detachMediaElement(); p.player.destroy(); } catch {} }
+  p.video.remove(); p.badge.remove();
+  const card = p.card; card.classList.remove("full"); setOverlay(card);
+  card.querySelector("img").style.display = "";
+  card.querySelector("img").src = `/api/cameras/${enc(name)}/thumbnail?t=${Date.now()}`;
+  const b = card.querySelector('[data-act="live"]'); b.textContent = "Live"; b.classList.replace("danger", "primary");
+  card.querySelector('[data-act="full"]').classList.add("hidden");
+  const del = () => fetch(`/api/cameras/${enc(name)}/live?sid=${enc(p.sid)}`, {method: "DELETE", credentials: "same-origin"});
+  recs[name] ? stopRecording(name).finally(del) : del();
+}
+
+// ---- registrazione
+const fmtTime = ms => { const s = Math.floor(ms / 1000); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+
+async function startRecording(name, card, btn) {
+  btn.disabled = true;
+  try {
+    if (!players[name]) { await startLive(name, card, card.querySelector('[data-act="live"]')); if (!players[name]) return; }
+    const r = await api(`/api/cameras/${enc(name)}/record`, {method: "POST"});
+    const rec = recs[name] = {id: r.id, t0: Date.now(), btn};
+    btn.classList.add("danger");
+    const tick = () => { btn.textContent = "■ Stop " + fmtTime(Date.now() - rec.t0); };
+    tick(); rec.timer = setInterval(tick, 1000);
+    const badge = players[name].badge; badge.textContent = "● REC"; badge.classList.add("rec");
+  } catch (err) { setOverlay(card, err.message); setTimeout(() => setOverlay(card), 4000); }
+  btn.disabled = false;
+}
+
+async function stopRecording(name) {
+  const rec = recs[name]; if (!rec) return;
+  delete recs[name]; clearInterval(rec.timer);
+  const card = rec.btn.closest(".cam");
+  rec.btn.textContent = "● Registra"; rec.btn.classList.remove("danger");
+  if (players[name]) { players[name].badge.textContent = "LIVE"; players[name].badge.classList.remove("rec"); }
+  setOverlay(card, "Salvo la registrazione…");
+  try {
+    const r = await api(`/api/cameras/${enc(name)}/record/stop`, {method: "POST"});
+    const sv = await api(`/api/recordings/${enc(r.id)}/save`, {method: "POST"});
+    if (sv.saved) setOverlay(card, "Salvato: " + sv.saved);
+    else if (sv.download) {
+      const a = document.createElement("a"); a.href = sv.download; a.download = r.filename; document.body.appendChild(a); a.click(); a.remove();
+      setOverlay(card, "Scaricato: " + r.filename);
+    } else {
+      setOverlay(card, "Registrazione in: " + sv.path);
+      fetch(`/api/recordings/${enc(r.id)}/reveal`, {method: "POST", credentials: "same-origin"}).catch(() => {});
+    }
+  } catch (err) { setOverlay(card, "Registrazione: " + err.message); }
+  setTimeout(() => setOverlay(card), 7000);
+}
+
+window.addEventListener("beforeunload", () => {
+  Object.keys(recs).forEach(n => fetch(`/api/cameras/${enc(n)}/record/stop`, {method: "POST", credentials: "same-origin", keepalive: true}));
+  Object.entries(players).forEach(([n, p]) => fetch(`/api/cameras/${enc(n)}/live?sid=${enc(p.sid)}`, {method: "DELETE", credentials: "same-origin", keepalive: true}));
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") document.querySelectorAll(".cam.full").forEach(c => c.classList.remove("full")); });
+
+boot();
+</script>
+</body>
+</html>

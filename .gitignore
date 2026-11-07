@@ -1,0 +1,18 @@
+# ambiente Python locale e file compilati
+.venv/
+__pycache__/
+*.pyc
+
+# dati personali: token di accesso Blink e log (mai nel repository)
+blink_credenziali.json
+*.log
+
+# cartelle estratte dagli zip (gli zip sono gia' nel repository)
+MatteoEye per Mac/
+MatteoEye per Windows/
+
+# file di lavoro dei test
+tests/appdata_fake/
+tests/rec_test/
+
+.DS_Store

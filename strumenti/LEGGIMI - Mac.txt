@@ -1,0 +1,40 @@
+MATTEOEYE PER MAC - vedere le telecamere Blink dal computer
+=============================================================
+
+1. Estrai lo zip (doppio clic). Trascina "MatteoEye" nella cartella
+   Applicazioni, oppure lasciala dove preferisci.
+   Due versioni: "MatteoEye" per i Mac con chip Apple (M1, M2, M3, M4...),
+   "MatteoEye (Mac Intel)" per i Mac piu' vecchi con processore Intel.
+   (Menu Mela > Informazioni su questo Mac dice quale hai.)
+
+2. Fai doppio clic su "MatteoEye". La prima volta macOS la blocca perche'
+   non e' firmata da uno sviluppatore registrato Apple. Per aprirla:
+   - apri Impostazioni di Sistema > Privacy e sicurezza, scorri in fondo,
+     premi "Apri comunque" accanto a "MatteoEye" e conferma.
+   Serve solo la prima volta.
+
+3. Si apre la finestra di MatteoEye. Accedi con email e password
+   del tuo account Blink e inserisci il codice che Blink ti manda via SMS/email
+   (serve solo la prima volta su questo Mac).
+
+4. Clicca "Live" su una telecamera. Il simbolo "⤢" la mette a schermo intero,
+   Esc per uscire.
+
+5. "● Registra" registra in un file video quello che vede la telecamera (se la
+   live e' spenta la avvia da solo). Premi "■ Stop": si apre la finestra per
+   scegliere dove salvare il video (.mp4). Se annulli, il video resta nella
+   cartella Filmati > MatteoEye. Quando Blink chiude la live da sola, la
+   registrazione viene salvata lo stesso.
+
+PER SPEGNERLO
+Chiudi la finestra di MatteoEye (o Cmd+Q, o "Chiudi MatteoEye" in alto a destra).
+
+NOTE
+- Non serve installare Python o altro: e' tutto dentro l'app.
+- Restano salvati solo i token di accesso (mai la password) e il file di log,
+  nella cartella  Libreria > Application Support > MatteoEye  della tua home
+  (nel Finder: menu Vai > Vai alla cartella > ~/Library/Application Support/MatteoEye).
+  "Esci" cancella i token.
+- Le telecamere a batteria chiudono la live dopo un po', come nell'app Blink:
+  basta ripremere "Live". Ogni live consuma batteria della telecamera.
+- Se qualcosa non va, manda il file blinklive.log che trovi nella cartella sopra.

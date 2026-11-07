@@ -1,0 +1,5 @@
+blinkpy>=0.25.9
+fastapi>=0.110
+uvicorn>=0.29
+imageio-ffmpeg>=0.5
+websockets>=13
