@@ -13,6 +13,7 @@
 <p align="center">
   <a href="https://github.com/markmanny/matteoeye/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/markmanny/matteoeye?include_prereleases&label=release&color=3b82f6"></a>
   <a href="https://github.com/markmanny/matteoeye/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/markmanny/matteoeye/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-1f2937"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS-1f2937">
   <img alt="Python" src="https://img.shields.io/badge/python-3.11%2B-1f2937?logo=python&logoColor=white">
   <a href="https://github.com/fronzbot/blinkpy"><img alt="Powered by blinkpy" src="https://img.shields.io/badge/powered%20by-blinkpy-1f2937"></a>
@@ -201,6 +202,10 @@ The Blink API is unofficial and can change. Update the library with `pip install
 ## Contributing
 
 Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). For security issues, see [SECURITY.md](SECURITY.md).
+
+## License
+
+MatteoEye is released under the [MIT License](LICENSE). Blink is a trademark of Amazon.com, Inc. or its affiliates; this project is not affiliated with them.
 
 ## Acknowledgements
 

@@ -98,3 +98,7 @@ servono telecamere vere ne' un account Blink:
   ogni live consuma batteria.
 - "Camera is offline" e "System is busy" sono risposte di Blink: telecamera spenta o
   server occupati, non errori del programma.
+
+## Licenza
+
+MatteoEye e' distribuito con [licenza MIT](LICENSE). Blink e' un marchio di Amazon.com, Inc. o delle sue affiliate; questo progetto non e' affiliato con loro.
