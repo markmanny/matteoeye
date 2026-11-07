@@ -39,9 +39,9 @@ Grab the latest package from the **[Releases page](https://github.com/markmanny/
 
 | System | File | How to start |
 | --- | --- | --- |
-| **Windows 10 / 11** | `MatteoEye per Windows.zip` | Extract the zip (right-click, *Extract all*), then double-click `Avvia MatteoEye.bat` |
-| **macOS, Apple silicon** (M1 and later) | `MatteoEye per Mac.zip` | Extract, then open `MatteoEye` |
-| **macOS, Intel** | `MatteoEye per Mac.zip` | Extract, then open `MatteoEye (Mac Intel)` |
+| **Windows 10 / 11** | `MatteoEye.per.Windows.zip` | Extract the zip (right-click, *Extract all*), then double-click `Avvia MatteoEye.bat` |
+| **macOS, Apple silicon** (M1 and later) | `MatteoEye.per.Mac.zip` | Extract, then open `MatteoEye` |
+| **macOS, Intel** | `MatteoEye.per.Mac.zip` | Extract, then open `MatteoEye (Mac Intel)` |
 
 The app is not signed by a registered developer yet, so the first launch shows a warning:
 
