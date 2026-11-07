@@ -12,6 +12,14 @@ All notable changes to this project are documented here. The format follows [Kee
 ### Changed
 - Redesigned interface: all cameras on one page, named after their system, large thumbnails with age badge, round action buttons, Sync Module status.
 
+### Security
+- Answer only requests addressed to `localhost` unless started with `--lan` (blocks DNS rebinding).
+- Commands and WebSockets must come from a MatteoEye page (`Origin` check).
+- Passwordless sign-in only from this computer, verified by address and page origin instead of relying on tunnel headers (Tailscale Funnel / ngrok).
+- Sign-in paused after 5 wrong passwords in 15 minutes; 5 wrong two-factor codes cancel the sign-in.
+- Session cookies survive restarts (only their SHA-256 fingerprint is stored), so devices don't have to sign in again; log out revokes all of them.
+- New `tests/test_security.py`, also run in CI.
+
 ### Fixed
 - Windows: starting without a console (`pythonw`) no longer opens an empty window for every ffmpeg process. Those windows covered the browser, which then stopped drawing the live video while the audio kept playing.
 - The live view jumps back to the most recent frame when the window becomes visible again.

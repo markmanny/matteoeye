@@ -10,6 +10,7 @@ Avvio:  python app.py          (solo da questo computer)
 
 import argparse
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -23,6 +24,7 @@ import sys
 import tempfile
 import time
 from contextlib import asynccontextmanager
+from urllib.parse import urlsplit
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -170,7 +172,8 @@ state = {
     "session": None,      # aiohttp ClientSession
     "blink": None,        # istanza Blink attiva
     "pending": None,      # Blink in attesa del codice 2FA
-    "web_tokens": set(),  # cookie di sessione validi del sito (uno per browser)
+    "web_tokens": {},     # impronta (sha256) del cookie di sessione -> scadenza (epoch)
+    "lan": False,         # avviato con --lan (raggiungibile da altri dispositivi)
     "server": None,       # uvicorn.Server, per chiudere il programma
     "window": None,       # finestra pywebview (modalita' programma)
     "open_url": None,     # indirizzo da aprire nel browser all'avvio
@@ -226,23 +229,169 @@ async def save_creds(blink):
         pass
 
 
+# ---------------------------------------------------------------- sessioni del sito
+# Ogni browser riceve un cookie casuale (256 bit). Su disco si salva solo la sua impronta
+# (sha256), cosi' i dispositivi restano collegati anche dopo un riavvio di MatteoEye
+# senza rifare il login; "Esci" le cancella tutte.
+SESSION_DAYS = 30
+SESSIONS_FILE = DATA / "sessioni_web.json"
+
+
+def _digest(token):
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _save_sessions():
+    try:
+        SESSIONS_FILE.write_text(json.dumps(state["web_tokens"]))
+        os.chmod(SESSIONS_FILE, 0o600)
+    except OSError as exc:
+        log.warning("Sessioni non salvate: %s", exc)
+
+
+def _load_sessions():
+    try:
+        data = json.loads(SESSIONS_FILE.read_text())
+        now = time.time()
+        state["web_tokens"] = {k: v for k, v in data.items() if isinstance(v, (int, float)) and v > now}
+    except (OSError, ValueError, AttributeError):
+        state["web_tokens"] = {}
+
+
 def new_web_token():
     token = secrets.token_urlsafe(32)
-    state["web_tokens"].add(token)
+    state["web_tokens"][_digest(token)] = time.time() + SESSION_DAYS * 86400
+    _save_sessions()
     return token
 
 
+def token_valid(token):
+    if not token:
+        return False
+    exp = state["web_tokens"].get(_digest(token))
+    return bool(exp and exp > time.time())
+
+
 def require_auth(token):
-    if not state["blink"] or not token or token not in state["web_tokens"]:
+    if not state["blink"] or not token_valid(token):
         raise HTTPException(status_code=401, detail="Non autenticato")
 
 
 def set_cookie(resp, token):
-    resp.set_cookie("bl_session", token, httponly=True, samesite="strict", max_age=60 * 60 * 24 * 30)
+    resp.set_cookie("bl_session", token, httponly=True, samesite="strict", max_age=SESSION_DAYS * 86400)
+
+
+# ---------------------------------------------------------------- da dove arriva la richiesta
+LOCAL_NAMES = {"127.0.0.1", "localhost", "::1"}
+LOOPBACK = ("127.0.0.1", "::1")
+FORWARD_HEADERS = ("x-forwarded-for", "forwarded", "x-real-ip", "x-forwarded-host", "x-forwarded-proto")
+
+
+def _hostname(value):
+    """Nome host da "host:porta", "[::1]:porta" o da un indirizzo completo (Origin)."""
+    if not value:
+        return ""
+    if "://" not in value:
+        value = "//" + value
+    try:
+        return (urlsplit(value).hostname or "").lower()
+    except ValueError:
+        return ""
+
+
+def is_this_computer(request):
+    """True solo se la richiesta arriva davvero da questo computer e da una pagina di MatteoEye.
+
+    - il collegamento arriva da 127.0.0.1 / ::1;
+    - l'indirizzo richiesto (Host) e' localhost: un sito che usa il "DNS rebinding" o un
+      tunnel (Tailscale Funnel, ngrok) arrivano con il proprio nome;
+    - nessuna intestazione da proxy o tunnel;
+    - per le richieste che cambiano qualcosa (POST...) la pagina che le manda (Origin) deve
+      essere anch'essa su localhost: un browser remoto dietro un tunnel non puo' falsarla.
+    """
+    if request.client is None or request.client.host not in LOOPBACK:
+        return False
+    if any(h in request.headers for h in FORWARD_HEADERS):
+        return False
+    if _hostname(request.headers.get("host")) not in LOCAL_NAMES:
+        return False
+    if request.method not in ("GET", "HEAD"):
+        if _hostname(request.headers.get("origin")) not in LOCAL_NAMES:
+            return False
+    return True
+
+
+class GuardMiddleware:
+    """Filtro su ogni richiesta (anche WebSocket), prima delle singole pagine.
+
+    - senza --lan MatteoEye risponde solo a richieste indirizzate a localhost/127.0.0.1:
+      blocca il "DNS rebinding" (un sito che si fa risolvere in 127.0.0.1 per parlare con
+      MatteoEye attraverso il browser);
+    - le richieste che cambiano qualcosa, e i WebSocket, devono venire da una pagina dello
+      stesso indirizzo (Origin uguale a Host): niente comandi da altri siti.
+    """
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] not in ("http", "websocket"):
+            return await self.app(scope, receive, send)
+        headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope.get("headers", [])}
+        host = headers.get("host", "")
+        reason = None
+        if not state["lan"] and _hostname(host) not in LOCAL_NAMES:
+            reason = "indirizzo non consentito"
+        else:
+            origin = headers.get("origin")
+            unsafe = scope["type"] == "websocket" or scope.get("method") not in ("GET", "HEAD", "OPTIONS")
+            if unsafe and origin and urlsplit(origin).netloc.lower() != host.lower():
+                reason = "richiesta da un altro sito"
+        if reason is None:
+            return await self.app(scope, receive, send)
+        log.warning("Richiesta rifiutata (%s): host=%r origin=%r %s", reason, host, headers.get("origin"), scope.get("path"))
+        if scope["type"] == "websocket":
+            await send({"type": "websocket.close", "code": 4403})
+            return
+        body = json.dumps({"detail": "Richiesta non consentita"}).encode()
+        await send({"type": "http.response.start", "status": 403,
+                    "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]})
+        await send({"type": "http.response.body", "body": body})
+
+
+app.add_middleware(GuardMiddleware)
+
+
+# ---------------------------------------------------------------- limite ai tentativi di accesso
+LOGIN_MAX_FAILS = 5          # tentativi sbagliati...
+LOGIN_WINDOW = 15 * 60       # ...in 15 minuti, poi pausa fino allo scadere della finestra
+CODE_MAX_FAILS = 5           # codici di verifica sbagliati per lo stesso accesso
+_fails = {}                  # chiave -> lista di istanti dei tentativi falliti
+
+
+def _fail_key(request):
+    # dietro un tunnel tutti arrivano da 127.0.0.1: si usa anche l'indirizzo dichiarato dal tunnel
+    fwd = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip()
+    return f"{request.client.host if request.client else '?'}|{fwd}"
+
+
+def check_attempts(request):
+    now = time.time()
+    key = _fail_key(request)
+    recent = [t for t in _fails.get(key, []) if now - t < LOGIN_WINDOW]
+    _fails[key] = recent
+    if len(recent) >= LOGIN_MAX_FAILS:
+        wait = int(LOGIN_WINDOW - (now - recent[0])) // 60 + 1
+        raise HTTPException(429, f"Troppi tentativi sbagliati: riprova tra {wait} minuti")
+
+
+def note_failure(request):
+    _fails.setdefault(_fail_key(request), []).append(time.time())
 
 
 # ---------------------------------------------------------------- avvio: riusa token salvati
 async def resume():
+    _load_sessions()
     if state["open_url"]:
         asyncio.get_running_loop().call_later(0.5, _open_browser, state["open_url"])
     if APP_MODE:
@@ -373,12 +522,12 @@ async def watchdog():
 
 # ---------------------------------------------------------------- login
 @app.get("/api/status")
-async def status(bl_session: str = Cookie(None)):
-    logged = bool(state["blink"]) and bool(bl_session) and bl_session in state["web_tokens"]
-    # Se i token salvati sono validi ma il browser non ha ancora il cookie
-    # (es. dopo un riavvio), lo consideriamo loggato solo da localhost.
+async def status(request: Request, bl_session: str = Cookie(None)):
+    logged = bool(state["blink"]) and token_valid(bl_session)
+    # Senza cookie ma con l'accesso Blink salvato: la pagina puo' entrare senza password
+    # solo se e' aperta su questo computer (vedi is_this_computer).
     return {
-        "logged_in": logged, "resumable": bool(state["blink"]) and not logged,
+        "logged_in": logged, "resumable": bool(state["blink"]) and not logged and is_this_computer(request),
         "app_mode": APP_MODE, "window": state["window"] is not None,
     }
 
@@ -395,7 +544,7 @@ async def ping():
 async def quit_endpoint(request: Request):
     if not APP_MODE:
         raise HTTPException(404)
-    if request.client.host not in ("127.0.0.1", "::1"):
+    if not is_this_computer(request):
         raise HTTPException(403)
     for name in list(streams):
         await stop_stream(name)
@@ -409,8 +558,9 @@ async def resume_web(request: Request):
     """Riprende la sessione salvata, consentito solo dal computer stesso."""
     if not state["blink"]:
         raise HTTPException(401, "Nessuna sessione salvata")
-    via_proxy = "x-forwarded-for" in request.headers or "forwarded" in request.headers
-    if request.client.host not in ("127.0.0.1", "::1") or via_proxy:
+    if not is_this_computer(request):
+        log.warning("Accesso senza password rifiutato: host=%r origin=%r client=%s",
+                    request.headers.get("host"), request.headers.get("origin"), request.client and request.client.host)
         raise HTTPException(403, "Accedi con email e password")
     resp = JSONResponse({"ok": True})
     set_cookie(resp, new_web_token())
@@ -418,7 +568,8 @@ async def resume_web(request: Request):
 
 
 @app.post("/api/login")
-async def login(payload: dict):
+async def login(payload: dict, request: Request):
+    check_attempts(request)
     email = (payload.get("email") or "").strip()
     password = payload.get("password") or ""
     if not email or not password:
@@ -439,12 +590,14 @@ async def login(payload: dict):
         log.exception("Errore login")
         raise HTTPException(401, f"Accesso non riuscito: {exc}")
     if not ok:
+        note_failure(request)
         raise HTTPException(401, "Email o password non corretti")
-    return await finish_login(blink)
+    return await finish_login(blink, request)
 
 
 @app.post("/api/verify")
-async def verify(payload: dict):
+async def verify(payload: dict, request: Request):
+    check_attempts(request)
     blink = state["pending"]
     if not blink:
         raise HTTPException(400, "Nessun accesso in attesa di codice")
@@ -452,14 +605,23 @@ async def verify(payload: dict):
     try:
         ok = await blink.send_2fa_code(code)
     except Exception as exc:
-        raise HTTPException(401, f"Codice non valido: {exc}")
+        ok, err = False, exc
+    else:
+        err = None
     if not ok:
-        raise HTTPException(401, "Codice non valido o scaduto")
+        note_failure(request)
+        blink._me_code_fails = getattr(blink, "_me_code_fails", 0) + 1
+        if blink._me_code_fails >= CODE_MAX_FAILS:
+            state["pending"] = None  # troppi codici sbagliati: si riparte da email e password
+            raise HTTPException(401, "Troppi codici sbagliati: rifai l'accesso con email e password")
+        raise HTTPException(401, f"Codice non valido: {err}" if err else "Codice non valido o scaduto")
     state["pending"] = None
-    return await finish_login(blink)
+    return await finish_login(blink, request)
 
 
-async def finish_login(blink):
+async def finish_login(blink, request=None):
+    if request is not None:
+        _fails.pop(_fail_key(request), None)
     disable_local_storage_polling(blink)
     await blink.refresh(force=True)
     state["blink"] = blink
@@ -475,6 +637,7 @@ async def logout():
         await stop_stream(name)
     state["blink"] = None
     state["web_tokens"].clear()
+    SESSIONS_FILE.unlink(missing_ok=True)
     CREDS.unlink(missing_ok=True)
     resp = JSONResponse({"ok": True})
     resp.delete_cookie("bl_session")
@@ -790,7 +953,7 @@ def stream_by_sid(sid):
 @app.websocket("/ws/live/{sid}")
 async def ws_live(websocket: WebSocket, sid: str):
     token = websocket.cookies.get("bl_session")
-    if not state["blink"] or not token or token not in state["web_tokens"]:
+    if not state["blink"] or not token_valid(token):
         await websocket.close(code=4401)
         return
     name, s = stream_by_sid(sid)
@@ -911,7 +1074,7 @@ async def record_stop(name: str, bl_session: str = Cookie(None)):
 
 
 def _is_local(request):
-    return request.client.host in ("127.0.0.1", "::1")
+    return is_this_computer(request)
 
 
 @app.post("/api/recordings/{rid}/save")
@@ -1248,6 +1411,7 @@ def main():
     p.add_argument("--port", type=int, default=8787)
     a = p.parse_args()
     host = "0.0.0.0" if a.lan else "127.0.0.1"
+    state["lan"] = a.lan
     port = a.port
     use_window = APP_MODE and not a.browser and not a.lan
     if not port_free(host, port):

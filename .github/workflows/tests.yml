@@ -31,3 +31,5 @@ jobs:
         run: python -m py_compile app.py tests/fake_blink.py
       - name: Live stream and recording (simulated camera)
         run: python tests/test_ws.py
+      - name: Security (DNS rebinding, tunnels, login attempts, sessions)
+        run: python tests/test_security.py

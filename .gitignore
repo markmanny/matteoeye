@@ -19,3 +19,6 @@ tests/appdata_fake/
 tests/rec_test/
 
 .DS_Store
+
+# sessioni del sito (impronte dei cookie)
+sessioni_web.json

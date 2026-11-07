@@ -155,6 +155,7 @@ The tests use a simulated camera (ffmpeg generates a test video), so you need ne
 ./.venv/bin/python tests/test_ws.py        # live stream over WebSocket + recording, against the real server
 ./.venv/bin/python tests/test_webview.py   # playback in a WebKit window (like the macOS app)
 ./.venv/bin/python tests/test_chrome.py    # playback in headless Chrome (the engine behind WebView2)
+./.venv/bin/python tests/test_security.py  # DNS rebinding, tunnels, login attempts, sessions
 ```
 
 `test_ws.py` runs on every push via [GitHub Actions](.github/workflows/tests.yml).
