@@ -1,14 +1,14 @@
 #!/bin/bash
-# Doppio clic: avvia Blink Live e lo pubblica su internet con ngrok.
+# Doppio clic: avvia MatteoEye e lo pubblica su internet con ngrok.
 # Serve un account ngrok gratuito con il token configurato (vedi LEGGIMI.txt).
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."  # cartella principale del progetto
 NGROK_CFG="$HOME/Library/Application Support/ngrok/ngrok.yml"
 if ! command -v ngrok >/dev/null 2>&1; then
-  osascript -e 'display dialog "ngrok non trovato. Installalo da ngrok.com/download e riprova." buttons {"OK"} with title "Blink Live"'
+  osascript -e 'display dialog "ngrok non trovato. Installalo da ngrok.com/download e riprova." buttons {"OK"} with title "MatteoEye"'
   exit 1
 fi
 if ! grep -q '^authtoken:' "$NGROK_CFG" 2>/dev/null; then
-  osascript -e 'display dialog "Manca il token di ngrok.\n\n1. Crea un account gratuito su ngrok.com\n2. Nella dashboard apri Your Authtoken e copialo\n3. Apri il Terminale e incolla:\n    ngrok config add-authtoken IL_TUO_TOKEN\n\nPoi riapri questo avviatore." buttons {"OK"} with title "Blink Live"'
+  osascript -e 'display dialog "Manca il token di ngrok.\n\n1. Crea un account gratuito su ngrok.com\n2. Nella dashboard apri Your Authtoken e copialo\n3. Apri il Terminale e incolla:\n    ngrok config add-authtoken IL_TUO_TOKEN\n\nPoi riapri questo avviatore." buttons {"OK"} with title "MatteoEye"'
   exit 1
 fi
 if ! command -v python3 >/dev/null 2>&1; then
@@ -47,10 +47,10 @@ for i in $(seq 1 20); do
   sleep 1
 done
 if [ -z "$URL" ]; then
-  osascript -e 'display dialog "ngrok non e partito. Controlla il token (ngrok config check) o riprova tra un minuto." buttons {"OK"} with title "Blink Live"'
+  osascript -e 'display dialog "ngrok non e partito. Controlla il token (ngrok config check) o riprova tra un minuto." buttons {"OK"} with title "MatteoEye"'
   exit 1
 fi
 printf '%s' "$URL" | pbcopy
-printf "\nBlink Live e' online su:  %s\n(indirizzo copiato negli appunti; chiudi questa finestra per spegnerlo)\n\n" "$URL"
-osascript -e "display dialog \"Blink Live e' online su:\n\n$URL\n\n(indirizzo copiato negli appunti)\n\nDa fuori serve sempre email, password e codice Blink.\nChiudi la finestra del Terminale per spegnerlo.\" buttons {\"OK\"} with title \"Blink Live\"" >/dev/null 2>&1 &
+printf "\nMatteoEye e' online su:  %s\n(indirizzo copiato negli appunti; chiudi questa finestra per spegnerlo)\n\n" "$URL"
+osascript -e "display dialog \"MatteoEye e' online su:\n\n$URL\n\n(indirizzo copiato negli appunti)\n\nDa fuori serve sempre email, password e codice Blink.\nChiudi la finestra del Terminale per spegnerlo.\" buttons {\"OK\"} with title \"MatteoEye\"" >/dev/null 2>&1 &
 wait $NG

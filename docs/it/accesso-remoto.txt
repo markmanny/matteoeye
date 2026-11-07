@@ -1,24 +1,14 @@
-BLINK LIVE - vedere le telecamere Blink dal computer
-====================================================
+MATTEOEYE - avvio dal sorgente e accesso remoto (Mac)
+=====================================================
 
-PROGRAMMA "MATTEOEYE" DA INSTALLARE SU ALTRI PC (Windows e Mac)
-In questa cartella ci sono due zip pronti da copiare (chiavetta, AirDrop,
-Drive, email...) su qualsiasi altro computer:
-- "MatteoEye per Windows.zip": estrai lo zip e fai doppio clic su
-  "Avvia MatteoEye.bat". Non serve installare nulla.
-- "MatteoEye per Mac.zip": estrai lo zip e fai doppio clic su "MatteoEye"
-  (o "MatteoEye (Mac Intel)" sui Mac con processore Intel).
-Il programma si apre in una finestra sua (senza browser). Il tasto "Registra"
-salva in un file .mp4 quello che vede la telecamera, dove scegli tu.
-Dentro ogni zip c'e' un LEGGIMI con i passaggi, compreso come superare
-l'avviso di sicurezza la prima volta (il programma non e' firmato).
-Su ogni computer si accede una volta con email, password e codice Blink;
-il computer non deve restare acceso per gli altri: ognuno vede le
-telecamere per conto suo. Se vuoi rigenerare gli zip dopo una modifica,
-chiedi a Claude ("rifai i pacchetti").
+PROGRAMMA PRONTO DA INSTALLARE (Windows e Mac)
+Gli zip pronti sono nella pagina Releases del repository:
+https://github.com/markmanny/matteoeye/releases
+Dentro ogni zip c'e' un LEGGIMI con i passaggi. Questa guida riguarda invece
+l'avvio dal codice sorgente sul Mac e l'accesso dagli altri dispositivi.
 
-AVVIO (Mac, da questa cartella)
-1. Fai doppio clic su "Avvia Blink Live.command".
+AVVIO (Mac, dalla cartella del progetto)
+1. Fai doppio clic su "scripts/macos/Avvia MatteoEye.command".
    La prima volta macOS potrebbe bloccarlo: tasto destro > Apri > Apri.
    (Serve Python 3: se manca, installalo da https://www.python.org/downloads/)
 2. Si apre il browser su http://127.0.0.1:8787
@@ -31,7 +21,7 @@ Dopo il primo accesso non serve rifare login: restano salvati solo i token
 (mai la password) nel file blink_credenziali.json. "Esci" li cancella.
 
 DA ALTRI DISPOSITIVI (in casa e fuori casa)
-Doppio clic su "Avvia Blink Live in rete.command": la finestra mostra gli
+Doppio clic su "scripts/macos/Avvia MatteoEye in rete.command": la finestra mostra gli
 indirizzi da aprire sugli altri dispositivi. Da un altro dispositivo serve
 sempre email, password e codice Blink (una volta per dispositivo).
 Il Mac deve restare acceso e sveglio (con il coperchio chiuso un portatile
@@ -41,9 +31,9 @@ DA QUALSIASI PC O TELEFONO, OVUNQUE (link pubblico, gratis): Tailscale Funnel
 1. Sul Mac installa Tailscale dall'App Store (cerca "Tailscale"), aprilo e
    accedi (va bene l'account Google o Apple). Serve solo sul Mac: chi guarda
    da un altro PC o telefono non deve installare nulla.
-2. Doppio clic su "Avvia Blink Live in rete.command". La prima volta si apre
+2. Doppio clic su "scripts/macos/Avvia MatteoEye in rete.command". La prima volta si apre
    una pagina di Tailscale che chiede di attivare "Funnel": premi Enable,
-   poi chiudi la finestra del Terminale e riavvia Blink Live.
+   poi chiudi la finestra del Terminale e riavvia MatteoEye.
 3. Da quel momento la finestra mostra il link pubblico (tipo
    https://macbook-pro-di-sonia.xxxx.ts.net), gia' copiato negli appunti.
    Aprilo da qualsiasi PC o telefono e accedi con email, password e codice
@@ -59,13 +49,13 @@ cioe' circa 3 ore di live, poi serve il piano a pagamento)
 1. Crea un account gratuito su https://ngrok.com, apri "Your Authtoken",
    copialo e nel Terminale scrivi:  ngrok config add-authtoken IL_TUO_TOKEN
 2. (facoltativo) Nella dashboard di ngrok, sezione "Domains", crea il dominio
-   gratuito e scrivilo nel file ngrok_dominio.txt in questa cartella: cosi'
+   gratuito e scrivilo nel file ngrok_dominio.txt nella cartella principale del progetto: cosi'
    il link resta sempre lo stesso.
-3. Doppio clic su "Avvia Blink Live con ngrok.command": il link compare nella
+3. Doppio clic su "scripts/macos/Avvia MatteoEye con ngrok.command": il link compare nella
    finestra e viene copiato negli appunti.
 
 PERCHE' NON VERCEL O UN HOSTING WEB
-Vercel esegue funzioni che durano pochi secondi per richiesta. Blink Live
+Vercel esegue funzioni che durano pochi secondi per richiesta. MatteoEye
 deve invece tenere una connessione continua con i server Blink, far girare
 ffmpeg senza interruzioni e scrivere i pezzi video su disco: serve un
 computer sempre acceso (questo Mac, oppure un piccolo server cloud a

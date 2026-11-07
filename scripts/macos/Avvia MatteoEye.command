@@ -1,6 +1,6 @@
 #!/bin/bash
-# Doppio clic per avviare Blink Live sul Mac
-cd "$(dirname "$0")"
+# Doppio clic per avviare MatteoEye sul Mac
+cd "$(dirname "$0")/../.."  # cartella principale del progetto
 if ! command -v python3 >/dev/null 2>&1; then
   osascript -e 'display dialog "Serve Python 3. Scaricalo da python.org e riprova." buttons {"OK"}'
   exit 1
