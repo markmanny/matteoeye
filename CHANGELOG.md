@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+- Redesigned interface: dark theme with a light option, one tab per network (Sync Module) so you only see the cameras of that place, camera cards with a play button, a controls pill (audio, stop, fullscreen, snapshot, record), a red `REC mm:ss` badge while recording, the age of the last picture, temperature, Wi-Fi and motion status under each card.
+- Arm / disarm the selected network from the bar at the bottom (`Disattivato` / `Attivo`), Sync Module online status, and per-camera motion detection toggle.
+- New endpoints: `GET /api/networks`, `POST /api/networks/{name}/arm`, `POST /api/cameras/{name}/motion`; `GET /api/cameras` now also returns `network`, `last_record` and `thumbnail_ts`.
+
 ## [1.0.0] - 2026-11-07
 
 ### Added

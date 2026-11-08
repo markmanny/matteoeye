@@ -28,13 +28,20 @@ cartella dati dell'utente (`Libreria/Application Support/MatteoEye` sul Mac,
 
 ## Funzioni
 
-- **Live**: il video arriva in continuo e parte dal primo fotogramma chiave; in genere
-  compare 7-20 secondi dopo il clic, quasi tutti spesi da Blink per svegliare la
-  telecamera a batteria.
-- **Registra**: salva in un file `.mp4` quello che vede la telecamera; allo stop si
-  sceglie dove salvarlo (cartella predefinita: Filmati/Video > MatteoEye).
-- **Foto**: scatta una nuova miniatura.
-- Schermo intero con `⤢`, Esc per uscire.
+- **Una scheda per ogni posto**: ogni rete (Sync Module) ha la sua scheda in alto,
+  cosi' vedi solo le telecamere di quella casa o ufficio. L'interruttore in basso
+  (Disattivato / Attivo) accende o spegne tutta la rete come nell'app Blink; lo
+  scudo sotto ogni telecamera accende o spegne il suo rilevamento movimento.
+- **Live** con il pulsante play: il video arriva in continuo e parte dal primo
+  fotogramma chiave; in genere compare 7-20 secondi dopo il clic, quasi tutti
+  spesi da Blink per svegliare la telecamera a batteria.
+- **Registra** con il pallino rosso: salva in un file `.mp4` quello che vede la
+  telecamera, con il contatore `REC mm:ss` in alto; allo stop si sceglie dove
+  salvarlo (cartella predefinita: Filmati/Video > MatteoEye).
+- **Foto** con il pulsante a forma di macchina fotografica: scatta una nuova
+  miniatura; l'etichetta nell'angolo dice quanto e' vecchia l'immagine.
+- Durante la live compaiono audio, stop e schermo intero; Esc esce dallo schermo
+  intero. Tema scuro di serie, tema chiaro con un clic.
 - Il programma si chiude da solo pochi minuti dopo che la finestra e' stata chiusa.
 
 ## Come funziona

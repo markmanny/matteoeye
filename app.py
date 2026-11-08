@@ -502,9 +502,67 @@ async def cameras(bl_session: str = Cookie(None)):
             "motion": cam.motion_detected,
             "wifi": cam.wifi_strength,
             "live": name in streams,
+            "network": getattr(getattr(cam, "sync", None), "name", "") or "",
+            "last_record": getattr(cam, "last_record", None),
+            "thumbnail_ts": _thumb_ts(getattr(cam, "thumbnail", None)),
             "updated": int(time.time()),
         })
     return out
+
+
+def _thumb_ts(url):
+    """Data (epoch) della miniatura, letta dal parametro ts= dell'indirizzo Blink."""
+    m = re.search(r"[?&]ts=(\d+)", url or "")
+    return int(m.group(1)) if m else None
+
+
+@app.get("/api/networks")
+async def networks(bl_session: str = Cookie(None)):
+    """Le reti (Sync Module) dell'account: nome, stato attivo/disattivo, online."""
+    require_auth(bl_session)
+    out = []
+    for name, sm in (getattr(state["blink"], "sync", None) or {}).items():
+        try:
+            online = bool(sm.online)
+        except Exception:
+            online = False
+        out.append({
+            "name": name,
+            "armed": getattr(sm, "arm", None),
+            "online": online,
+            "cameras": list(getattr(sm, "cameras", {}).keys()),
+        })
+    return out
+
+
+@app.post("/api/networks/{name}/arm")
+async def arm_network(name: str, payload: dict, bl_session: str = Cookie(None)):
+    """Attiva (armed=true) o disattiva l'intera rete, come il pulsante dell'app Blink."""
+    require_auth(bl_session)
+    sm = (getattr(state["blink"], "sync", None) or {}).get(name)
+    if sm is None:
+        raise HTTPException(404, "Rete non trovata")
+    await sm.async_arm(bool(payload.get("armed")))
+    await asyncio.sleep(1)
+    try:
+        await state["blink"].refresh(force=True)
+    except Exception as exc:
+        log.warning("Refresh dopo arm fallito: %s", exc)
+    return {"ok": True, "armed": sm.arm}
+
+
+@app.post("/api/cameras/{name}/motion")
+async def camera_motion(name: str, payload: dict, bl_session: str = Cookie(None)):
+    """Accende o spegne il rilevamento movimento della singola telecamera."""
+    require_auth(bl_session)
+    cam = find_camera(name)
+    await cam.async_arm(bool(payload.get("enabled")))
+    await asyncio.sleep(1)
+    try:
+        await state["blink"].refresh(force=True)
+    except Exception as exc:
+        log.warning("Refresh dopo motion fallito: %s", exc)
+    return {"ok": True, "armed": cam.arm}
 
 
 @app.get("/api/cameras/{name}/thumbnail")

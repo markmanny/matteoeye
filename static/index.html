@@ -6,59 +6,155 @@
 <title>MatteoEye</title>
 <script src="/static/mpegts.js"></script>
 <style>
-  :root{--bg:#0f1115;--card:#181b22;--line:#262a33;--text:#e8eaef;--muted:#8b93a3;--accent:#3b82f6;--live:#ef4444;--ok:#22c55e}
+  :root{
+    --bg:#0b0e14;--bg2:#10141c;--card:#151923;--line:#232936;--text:#e8eaef;--muted:#8b93a3;
+    --accent:#3b82f6;--accent2:#2563eb;--live:#ef4444;--ok:#22c55e;--warn:#f59e0b;
+    --pill:rgba(17,20,28,.82);--pill-line:rgba(255,255,255,.08);--shadow:0 10px 30px rgba(0,0,0,.35)
+  }
+  :root[data-theme="light"]{
+    --bg:#eef1f6;--bg2:#ffffff;--card:#ffffff;--line:#dfe4ec;--text:#111827;--muted:#6b7280;
+    --pill:rgba(17,20,28,.78);--pill-line:rgba(255,255,255,.1);--shadow:0 10px 30px rgba(15,23,42,.12)
+  }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-  header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--line)}
-  header h1{font-size:18px;margin:0;display:flex;gap:8px;align-items:center}
-  .dot{width:10px;height:10px;border-radius:50%;background:var(--accent)}
-  button{font:inherit;border:1px solid var(--line);background:#222733;color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer}
-  button:hover{border-color:#3a4150}
-  button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  button.danger{background:var(--live);border-color:var(--live);color:#fff}
-  button:disabled{opacity:.5;cursor:wait}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased}
+  button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+  button:disabled{opacity:.55;cursor:wait}
+  svg{display:block}
   .hidden{display:none!important}
-  /* login */
-  .login{max-width:360px;margin:12vh auto;padding:28px;background:var(--card);border:1px solid var(--line);border-radius:14px}
-  .login h2{margin:0 0 4px;font-size:20px}
-  .login p{color:var(--muted);margin:0 0 18px;font-size:14px}
-  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 4px}
-  input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:#0f1115;color:var(--text);font:inherit}
+
+  /* ---------- barra superiore ---------- */
+  .top{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:22px;height:58px;padding:0 20px;background:var(--bg2);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
+  .brand svg{width:30px;height:30px;border-radius:8px}
+  .brand b{color:var(--accent);font-weight:700}
+  .tabs{display:flex;gap:4px;height:100%;overflow-x:auto;scrollbar-width:none;flex:1}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{position:relative;padding:0 12px;height:100%;color:var(--muted);font-weight:500;white-space:nowrap;border-bottom:2px solid transparent;transition:color .15s}
+  .tab:hover{color:var(--text)}
+  .tab.on{color:var(--accent);font-weight:600;border-bottom-color:var(--accent)}
+  .tools{display:flex;align-items:center;gap:4px;margin-left:auto}
+  .icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:background .15s,color .15s}
+  .icon:hover{background:var(--line);color:var(--text)}
+  .icon svg{width:18px;height:18px}
+  .menu{position:relative}
+  .pop{position:absolute;right:0;top:44px;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:var(--shadow);z-index:20}
+  .pop button{display:block;width:100%;text-align:left;padding:9px 12px;border-radius:8px;font-size:14px}
+  .pop button:hover{background:var(--line)}
+  .pop .sep{height:1px;background:var(--line);margin:4px 0}
+  .pop .danger{color:#f87171}
+
+  /* ---------- login ---------- */
+  .login{max-width:380px;margin:10vh auto;padding:30px 28px;background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+  .login .logo{display:flex;justify-content:center;margin-bottom:14px}
+  .login .logo svg{width:64px;height:64px;border-radius:16px}
+  .login h2{margin:0;font-size:22px;text-align:center}
+  .login p{color:var(--muted);margin:6px 0 20px;font-size:14px;text-align:center}
+  label{display:block;font-size:13px;color:var(--muted);margin:12px 0 6px}
+  input{width:100%;padding:11px 13px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit}
   input:focus{outline:2px solid var(--accent);border-color:transparent}
-  .login button{width:100%;margin-top:18px;padding:11px}
-  .err{color:#fca5a5;font-size:14px;margin-top:12px;min-height:1em}
-  /* griglia */
-  main{padding:20px;max-width:1400px;margin:0 auto}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px}
-  .cam{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-  .view{position:relative;aspect-ratio:16/9;background:#000;display:flex;align-items:center;justify-content:center}
-  .view img,.view video{width:100%;height:100%;object-fit:contain;display:block}
-  .badge{position:absolute;top:10px;left:10px;background:var(--live);color:#fff;font-size:12px;font-weight:600;padding:3px 8px;border-radius:6px;letter-spacing:.04em}
-  .spinner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);color:#fff;font-size:14px}
-  .meta{padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-  .meta h3{margin:0;font-size:15px}
-  .info{color:var(--muted);font-size:12px}
-  .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-  @keyframes recblink{50%{opacity:.35}}
-  .badge.rec{animation:recblink 1s infinite}
-  .empty{color:var(--muted);text-align:center;padding:60px 0}
-  .full{position:fixed;inset:0;z-index:10;border-radius:0;display:flex;flex-direction:column}
-  .full .view{flex:1;aspect-ratio:auto}
-  @media (max-width:500px){main{padding:16px}.grid{grid-template-columns:1fr}}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:10px;font-weight:600;background:var(--line)}
+  .btn.primary{background:var(--accent);color:#fff}
+  .btn.primary:hover{background:var(--accent2)}
+  .login .btn{width:100%;margin-top:20px}
+  .err{color:#fca5a5;font-size:14px;margin-top:12px;min-height:1em;text-align:center}
+
+  /* ---------- contenuto ---------- */
+  main{padding:22px 20px 110px;max-width:1440px;margin:0 auto}
+  .section{margin:0 0 14px;font-size:15px;font-weight:600;color:var(--muted);letter-spacing:.01em}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:22px}
+  .empty{color:var(--muted);text-align:center;padding:60px 0;grid-column:1/-1}
+
+  .cam{display:flex;flex-direction:column;gap:9px}
+  .cam[hidden]{display:none}
+  .view{position:relative;aspect-ratio:16/9;background:#05070b;border-radius:16px;overflow:hidden;border:1px solid var(--line);box-shadow:0 6px 24px rgba(0,0,0,.25)}
+  .view img,.view video{width:100%;height:100%;object-fit:cover;display:block;background:#05070b}
+  .view video{object-fit:contain}
+  .view::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.45),transparent 28%,transparent 62%,rgba(0,0,0,.55));pointer-events:none}
+  .view>*{z-index:1}
+  .name{position:absolute;top:12px;left:14px;font-weight:600;font-size:16px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.7)}
+  .state{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;font-size:12px;font-weight:700;letter-spacing:.03em;color:#fff;background:var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.35)}
+  .state.rec{background:var(--live)}
+  .state.rec::before{content:"";width:7px;height:7px;border-radius:50%;background:#fff;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .play{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;border-radius:50%;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;color:#fff;transition:transform .15s,background .15s}
+  .play:hover{background:rgba(255,255,255,.34);transform:scale(1.06)}
+  .play svg{width:26px;height:26px;margin-left:3px}
+  .cam.live .play{display:none}
+  .age{position:absolute;left:14px;bottom:14px;padding:4px 9px;border-radius:8px;font-size:12px;font-weight:600;color:#fff;background:var(--pill);border:1px solid var(--pill-line)}
+  .ctrls{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:8px}
+  .chip{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:var(--pill);border:1px solid var(--pill-line);color:#fff}
+  .chip svg{width:18px;height:18px}
+  .chip.low{color:#f87171}
+  .pillbar{display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:var(--pill);border:1px solid var(--pill-line)}
+  .pillbar button{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;transition:background .15s}
+  .pillbar button:hover{background:rgba(255,255,255,.14)}
+  .pillbar button svg{width:18px;height:18px}
+  .pillbar .lv{display:none}
+  .cam.live .pillbar .lv{display:flex}
+  .recdot{width:12px;height:12px;border-radius:50%;background:var(--live);box-shadow:0 0 0 2px rgba(239,68,68,.25)}
+  .pillbar button.recbtn.on{background:var(--live)}
+  .pillbar button.recbtn.on:hover{background:#dc2626}
+  .recsq{width:12px;height:12px;border-radius:2px;background:#fff}
+  .spinner{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;background:rgba(0,0,0,.6);color:#fff;font-size:14px;font-weight:500;backdrop-filter:blur(2px);z-index:2}
+  .meta{display:flex;align-items:center;gap:16px;padding:0 4px;color:var(--muted);font-size:12.5px;flex-wrap:wrap}
+  .meta span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+  .meta svg{width:14px;height:14px}
+  .meta .motion{cursor:pointer;border-radius:6px;padding:2px 4px;margin:-2px -4px;transition:background .15s,color .15s}
+  .meta .motion:hover{background:var(--line);color:var(--text)}
+  .meta .motion.on{color:var(--text)}
+
+  .sync{margin-top:22px;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:var(--card);border:1px solid var(--line);border-radius:14px;font-weight:600}
+  .sync .st{display:flex;align-items:center;gap:8px;font-weight:500;color:var(--muted)}
+  .sync .st svg{width:18px;height:18px;color:var(--ok)}
+  .sync .st.off svg{color:var(--live)}
+
+  /* ---------- interruttore in basso ---------- */
+  .armbar{position:fixed;left:0;right:0;bottom:22px;display:flex;justify-content:center;z-index:4;pointer-events:none}
+  .seg{display:flex;gap:4px;padding:5px;border-radius:999px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);pointer-events:auto}
+  .seg button{padding:10px 22px;border-radius:999px;font-weight:600;color:var(--muted);transition:background .18s,color .18s}
+  .seg button:hover{color:var(--text)}
+  .seg button.on{background:var(--accent);color:#fff}
+  .seg.busy button{opacity:.7;cursor:wait}
+
+  /* ---------- schermo intero ---------- */
+  .cam.full{position:fixed;inset:0;z-index:30;background:#000;gap:0}
+  .cam.full .view{flex:1;aspect-ratio:auto;border-radius:0;border:0}
+  .cam.full .meta{display:none}
+
+  @media (max-width:640px){
+    .top{gap:12px;padding:0 12px}
+    .brand span{display:none}
+    main{padding:16px 14px 100px}
+    .grid{grid-template-columns:1fr;gap:18px}
+    .seg button{padding:9px 16px}
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1><span class="dot"></span>MatteoEye</h1>
-  <div id="topActions" class="hidden">
-    <button id="refreshAll">Aggiorna</button>
-    <button id="logoutBtn">Esci</button>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 256 256" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a1f2b"/><stop offset="1" stop-color="#0b0d12"/></linearGradient><radialGradient id="ir" cx=".42" cy=".38" r=".7"><stop offset="0" stop-color="#93c5fd"/><stop offset=".45" stop-color="#3b82f6"/><stop offset="1" stop-color="#1e3a8a"/></radialGradient></defs><rect width="256" height="256" rx="56" fill="url(#lg)"/><path d="M28 128C62 72 194 72 228 128 194 184 62 184 28 128Z" fill="#0f1115" stroke="#3b82f6" stroke-width="10" stroke-linejoin="round"/><circle cx="128" cy="128" r="40" fill="url(#ir)"/><circle cx="128" cy="128" r="17" fill="#0b0d12"/><circle cx="114" cy="113" r="7" fill="#fff" fill-opacity=".9"/><circle cx="204" cy="56" r="17" fill="#ef4444"/><circle cx="204" cy="56" r="17" fill="none" stroke="#0b0d12" stroke-width="5"/></svg>
+    <span>Matteo<b>Eye</b></span>
   </div>
-  <button id="quitBtn" class="hidden" title="Spegne il programma MatteoEye">Chiudi MatteoEye</button>
+  <nav id="tabs" class="tabs hidden" aria-label="Reti"></nav>
+  <div id="topActions" class="tools hidden">
+    <button id="refreshAll" class="icon" title="Aggiorna"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
+    <button id="themeBtn" class="icon" title="Tema chiaro / scuro"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+    <div class="menu">
+      <button id="moreBtn" class="icon" title="Altro"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg></button>
+      <div id="menuPop" class="pop hidden">
+        <button id="logoutBtn">Esci dall'account Blink</button>
+        <div id="quitSep" class="sep hidden"></div>
+        <button id="quitBtn" class="danger hidden" title="Spegne il programma MatteoEye">Chiudi MatteoEye</button>
+      </div>
+    </div>
+  </div>
 </header>
 
 <!-- Login -->
 <section id="loginBox" class="login hidden">
+  <div class="logo"><svg viewBox="0 0 256 256" aria-hidden="true"><rect width="256" height="256" rx="56" fill="url(#lg)"/><path d="M28 128C62 72 194 72 228 128 194 184 62 184 28 128Z" fill="#0f1115" stroke="#3b82f6" stroke-width="10" stroke-linejoin="round"/><circle cx="128" cy="128" r="40" fill="url(#ir)"/><circle cx="128" cy="128" r="17" fill="#0b0d12"/><circle cx="114" cy="113" r="7" fill="#fff" fill-opacity=".9"/><circle cx="204" cy="56" r="17" fill="#ef4444"/><circle cx="204" cy="56" r="17" fill="none" stroke="#0b0d12" stroke-width="5"/></svg></div>
   <h2>Accedi</h2>
   <p>Usa lo stesso account dell'app Blink.</p>
   <form id="loginForm">
@@ -66,26 +162,55 @@
     <input id="email" type="email" autocomplete="username" required>
     <label for="password">Password</label>
     <input id="password" type="password" autocomplete="current-password" required>
-    <button class="primary" type="submit">Entra</button>
+    <button class="btn primary" type="submit">Entra</button>
   </form>
   <form id="codeForm" class="hidden">
     <p>Blink ti ha inviato un codice via SMS o email. Inseriscilo qui.</p>
     <label for="code">Codice di verifica</label>
     <input id="code" inputmode="numeric" autocomplete="one-time-code" required>
-    <button class="primary" type="submit">Verifica</button>
+    <button class="btn primary" type="submit">Verifica</button>
   </form>
   <div class="err" id="loginErr"></div>
 </section>
 
 <!-- Telecamere -->
 <main id="app" class="hidden">
+  <h2 class="section">Dispositivi</h2>
   <div class="grid" id="grid"></div>
+  <div id="syncRow" class="sync hidden">
+    <span id="syncName">Sync Module</span>
+    <span id="syncState" class="st">Online <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H7a5 5 0 0 1-.9-9.9A7 7 0 0 1 19.6 11 4 4 0 0 1 17.5 19z"/></svg></span>
+  </div>
 </main>
+
+<footer id="armBar" class="armbar hidden">
+  <div class="seg" id="armSeg">
+    <button data-arm="0">Disattivato</button>
+    <button data-arm="1">Attivo</button>
+  </div>
+</footer>
 
 <script>
 const $ = s => document.querySelector(s);
-const players = {}; // nome -> {player, video, badge, card, sid}
-const recs = {};    // nome -> {id, t0, timer, btn}  registrazioni in corso
+const players = {}; // nome -> {player, video, card, sid}
+const recs = {};    // nome -> {id, t0, timer, card}  registrazioni in corso
+let cams = [], nets = [], curNet = null;
+
+// ---- icone
+const I = {
+  play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>',
+  full: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
+  snap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
+  muted: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="m23 9-6 6M17 9l6 6"/></svg>',
+  sound: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a9 9 0 0 1 0 14"/></svg>',
+  batt: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path class="lvl" d="M6 11v2" stroke-width="4"/></svg>',
+  temp: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/></svg>',
+  wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.6a11 11 0 0 1 14 0M8.5 16a6 6 0 0 1 7 0M2 9a16 16 0 0 1 20 0"/><circle cx="12" cy="19.5" r=".8" fill="currentColor"/></svg>',
+  shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>',
+  sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
+};
 
 async function api(path, opts = {}, retry = true) {
   const r = await fetch(path, {credentials: "same-origin", headers: {"Content-Type": "application/json"}, ...opts});
@@ -98,19 +223,32 @@ async function api(path, opts = {}, retry = true) {
   return data;
 }
 
-function showLogin() { $("#loginBox").classList.remove("hidden"); $("#app").classList.add("hidden"); $("#topActions").classList.add("hidden"); }
+function showLogin() { $("#loginBox").classList.remove("hidden"); $("#app").classList.add("hidden"); $("#topActions").classList.add("hidden"); $("#tabs").classList.add("hidden"); $("#armBar").classList.add("hidden"); }
 function showApp() { $("#loginBox").classList.add("hidden"); $("#app").classList.remove("hidden"); $("#topActions").classList.remove("hidden"); loadCameras(); }
+
+// ---- tema chiaro / scuro (ricordato su questo dispositivo)
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $("#themeBtn").innerHTML = t === "light" ? I.moon : I.sun;
+  try { localStorage.setItem("theme", t); } catch {}
+}
+try { applyTheme(localStorage.getItem("theme") === "light" ? "light" : "dark"); } catch { applyTheme("dark"); }
+$("#themeBtn").onclick = () => applyTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
+
+// ---- menu "altro"
+$("#moreBtn").onclick = e => { e.stopPropagation(); $("#menuPop").classList.toggle("hidden"); };
+document.addEventListener("click", e => { if (!e.target.closest(".menu")) $("#menuPop").classList.add("hidden"); });
 
 // Modalita' programma: la pagina manda un battito al programma, che si spegne
 // da solo pochi minuti dopo che l'ultima pagina e' stata chiusa.
 function startHeartbeat() {
   const ping = () => fetch("/api/ping", {method: "POST", credentials: "same-origin"}).catch(() => {});
   ping(); setInterval(ping, 15000);
-  const q = $("#quitBtn"); q.classList.remove("hidden");
+  const q = $("#quitBtn"); q.classList.remove("hidden"); $("#quitSep").classList.remove("hidden");
   q.onclick = async () => {
     Object.keys(players).forEach(stopLive);
     try { await api("/api/quit", {method: "POST"}); } catch {}
-    document.body.innerHTML = '<main style="padding:40px;text-align:center"><h2>MatteoEye e\' chiuso.</h2><p>Puoi chiudere questa scheda. Per riaprirlo, avvia di nuovo il programma MatteoEye.</p></main>';
+    document.body.innerHTML = '<main style="padding:60px 20px;text-align:center"><h2>MatteoEye e\' chiuso.</h2><p style="color:var(--muted)">Puoi chiudere questa finestra. Per riaprirlo, avvia di nuovo il programma MatteoEye.</p></main>';
   };
 }
 
@@ -144,39 +282,138 @@ $("#refreshAll").onclick = () => loadCameras();
 
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const enc = encodeURIComponent;
+const thumbUrl = name => `/api/cameras/${enc(name)}/thumbnail?t=${Date.now()}`;
 
-async function loadCameras() {
-  let cams;
-  try { cams = await api("/api/cameras"); } catch (e) { if (/autenticato/i.test(e.message)) return showLogin(); throw e; }
-  const grid = $("#grid");
-  if (!cams.length) { grid.innerHTML = '<div class="empty">Nessuna telecamera trovata su questo account.</div>'; return; }
-  grid.innerHTML = cams.map(c => `
-    <article class="cam" data-name="${esc(c.name)}">
-      <div class="view">
-        <img src="/api/cameras/${enc(c.name)}/thumbnail?t=${Date.now()}" alt="" onerror="this.style.display='none'">
-      </div>
-      <div class="meta">
-        <div>
-          <h3>${esc(c.name)}</h3>
-          <div class="info">${[c.battery && "Batteria " + c.battery, c.temperature != null && c.temperature + "°C", c.armed ? "Attiva" : "Disattiva"].filter(Boolean).join(" · ")}</div>
-        </div>
-        <div class="actions">
-          <button data-act="snap">Foto</button>
-          <button data-act="full" class="hidden">⤢</button>
-          <button data-act="rec" title="Registra quello che vede la telecamera in un file video">● Registra</button>
-          <button data-act="live" class="primary">Live</button>
-        </div>
-      </div>
-    </article>`).join("");
+// "2 h fa": eta' dell'ultima immagine o dell'ultimo video
+function ago(c) {
+  let t = null;
+  if (c.last_record) { const d = Date.parse(c.last_record); if (!isNaN(d)) t = d; }
+  if (c.thumbnail_ts) { const d = c.thumbnail_ts * 1000; if (t == null || d > t) t = d; }
+  if (t == null) return "";
+  const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (m < 1) return "adesso";
+  if (m < 60) return m + " min fa";
+  const h = Math.round(m / 60); if (h < 48) return h + " h fa";
+  const g = Math.round(h / 24); if (g <= 30) return g + " g fa";
+  return new Date(t).toLocaleDateString("it-IT", {day: "numeric", month: "short", year: "numeric"});
 }
 
+function battClass(b) { if (b == null || b === "") return "hidden"; const s = String(b).toLowerCase(); return (s === "low" || (Number(b) <= 1 && !isNaN(Number(b)))) ? "chip low" : "chip"; }
+function wifiText(w) { if (w == null || w === "") return ""; return isNaN(Number(w)) ? "Wi-Fi " + w : "Wi-Fi " + w; }
+
+async function loadCameras() {
+  try { cams = await api("/api/cameras"); } catch (e) { if (/autenticato/i.test(e.message)) return showLogin(); throw e; }
+  try { nets = await api("/api/networks"); } catch { nets = []; }
+  if (!nets.length) {
+    // server senza /api/networks: ricava le reti dalle telecamere
+    const names = [...new Set(cams.map(c => c.network).filter(Boolean))];
+    nets = names.map(n => ({name: n, armed: null, online: null, cameras: cams.filter(c => c.network === n).map(c => c.name)}));
+  }
+  if (!curNet) { try { curNet = decodeURIComponent(location.hash.slice(1)) || localStorage.getItem("net"); } catch {} }
+  if (!curNet || !nets.some(n => n.name === curNet)) curNet = nets.length ? nets[0].name : null;
+  renderTabs(); renderGrid(); renderNet();
+}
+
+function renderTabs() {
+  const t = $("#tabs");
+  if (nets.length < 1) { t.classList.add("hidden"); return; }
+  t.classList.remove("hidden");
+  t.innerHTML = nets.map(n => `<button class="tab${n.name === curNet ? " on" : ""}" data-net="${esc(n.name)}">${esc(n.name)}</button>`).join("");
+}
+$("#tabs").onclick = e => {
+  const b = e.target.closest(".tab"); if (!b) return; curNet = b.dataset.net;
+  try { history.replaceState(null, "", "#" + encodeURIComponent(curNet)); localStorage.setItem("net", curNet); } catch {}
+  renderTabs(); renderGrid(); renderNet();
+};
+
+function metaHtml(c) {
+  const t = c.temperature != null ? `<span>${I.temp}${esc(c.temperature)}°C</span>` : "";
+  const w = wifiText(c.wifi) ? `<span>${I.wifi}${esc(wifiText(c.wifi))}</span>` : "";
+  const m = `<span class="motion${c.armed ? " on" : ""}" data-act="motion" title="Accendi o spegni il rilevamento movimento">${I.shield}${c.armed ? "Movimento attivo" : "Movimento spento"}</span>`;
+  return t + w + m;
+}
+
+function cardHtml(c) {
+  const a = ago(c);
+  return `
+    <article class="cam" data-name="${esc(c.name)}" data-net="${esc(c.network || "")}">
+      <div class="view">
+        <img src="${thumbUrl(c.name)}" alt="" onerror="this.style.visibility='hidden'">
+        <div class="name">${esc(c.name)}</div>
+        <div class="state hidden"></div>
+        <button class="play" data-act="live" title="Guarda in diretta">${I.play}</button>
+        <div class="age${a ? "" : " hidden"}">${esc(a)}</div>
+        <div class="ctrls">
+          <span class="${battClass(c.battery)}" title="Batteria${c.battery != null ? ": " + esc(c.battery) : ""}">${I.batt}</span>
+          <div class="pillbar">
+            <button class="lv" data-act="mute" title="Audio">${I.muted}</button>
+            <button class="lv" data-act="stop" title="Ferma la diretta">${I.stop}</button>
+            <button class="lv" data-act="full" title="Schermo intero">${I.full}</button>
+            <button data-act="snap" title="Scatta una nuova foto">${I.snap}</button>
+            <button class="recbtn" data-act="rec" title="Registra quello che vede la telecamera in un file video"><span class="recdot"></span></button>
+          </div>
+        </div>
+      </div>
+      <div class="meta">${metaHtml(c)}</div>
+    </article>`;
+}
+
+function renderGrid() {
+  const grid = $("#grid");
+  if (!cams.length) { grid.innerHTML = '<div class="empty">Nessuna telecamera trovata su questo account.</div>'; return; }
+  const seen = new Set();
+  for (const c of cams) {
+    seen.add(c.name);
+    let card = grid.querySelector(`.cam[data-name="${CSS.escape(c.name)}"]`);
+    if (card && (players[c.name] || recs[c.name])) {
+      // live in corso: aggiorno solo i dati sotto, senza toccare il video
+      card.querySelector(".meta").innerHTML = metaHtml(c);
+    } else {
+      const tpl = document.createElement("template"); tpl.innerHTML = cardHtml(c).trim();
+      const fresh = tpl.content.firstElementChild;
+      card ? card.replaceWith(fresh) : grid.appendChild(fresh);
+      card = fresh;
+    }
+    card.hidden = !!(curNet && c.network && c.network !== curNet);
+  }
+  grid.querySelectorAll(".cam").forEach(el => { if (!seen.has(el.dataset.name)) el.remove(); });
+  const e = grid.querySelector(".empty"); if (e) e.remove();
+}
+
+function renderNet() {
+  const n = nets.find(x => x.name === curNet);
+  const row = $("#syncRow"), bar = $("#armBar");
+  if (!n) { row.classList.add("hidden"); bar.classList.add("hidden"); return; }
+  row.classList.remove("hidden");
+  $("#syncName").textContent = "Sync Module" + (nets.length > 1 ? " · " + n.name : "");
+  const st = $("#syncState");
+  if (n.online == null) { st.classList.add("hidden"); }
+  else { st.classList.remove("hidden"); st.classList.toggle("off", !n.online); st.firstChild.textContent = (n.online ? "Online " : "Offline "); }
+  if (n.armed == null) { bar.classList.add("hidden"); return; }
+  bar.classList.remove("hidden");
+  $("#armSeg").querySelectorAll("button").forEach(b => b.classList.toggle("on", (b.dataset.arm === "1") === !!n.armed));
+}
+
+$("#armSeg").onclick = async e => {
+  const b = e.target.closest("button"); if (!b || !curNet) return;
+  const want = b.dataset.arm === "1";
+  const n = nets.find(x => x.name === curNet); if (n && !!n.armed === want) return;
+  const seg = $("#armSeg"); seg.classList.add("busy");
+  try { const r = await api(`/api/networks/${enc(curNet)}/arm`, {method: "POST", body: JSON.stringify({armed: want})}); if (n) n.armed = r.armed != null ? r.armed : want; }
+  catch (err) { alert("Non riesco a cambiare lo stato: " + err.message); }
+  seg.classList.remove("busy"); renderNet(); loadCameras();
+};
+
 $("#grid").onclick = async e => {
-  const btn = e.target.closest("button"); if (!btn) return;
-  const card = btn.closest(".cam"); const name = card.dataset.name;
-  if (btn.dataset.act === "live") players[name] ? stopLive(name) : startLive(name, card, btn);
-  if (btn.dataset.act === "snap") snap(name, card, btn);
-  if (btn.dataset.act === "rec") recs[name] ? stopRecording(name) : startRecording(name, card, btn);
-  if (btn.dataset.act === "full") card.classList.toggle("full");
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const card = el.closest(".cam"); const name = card.dataset.name; const act = el.dataset.act;
+  if (act === "live") players[name] ? stopLive(name) : startLive(name, card, el);
+  if (act === "stop") stopLive(name);
+  if (act === "snap") snap(name, card, el);
+  if (act === "rec") recs[name] ? stopRecording(name) : startRecording(name, card, el);
+  if (act === "full") card.classList.toggle("full");
+  if (act === "mute") toggleMute(name, el);
+  if (act === "motion") toggleMotion(name, card, el);
 };
 
 function setOverlay(card, text) {
@@ -185,12 +422,32 @@ function setOverlay(card, text) {
   if (!o) { o = document.createElement("div"); o.className = "spinner"; card.querySelector(".view").appendChild(o); }
   o.textContent = text;
 }
+function setState(card, text, rec) {
+  const s = card.querySelector(".state");
+  if (!text) { s.classList.add("hidden"); return; }
+  s.classList.remove("hidden"); s.classList.toggle("rec", !!rec); s.textContent = text;
+}
 
 async function snap(name, card, btn) {
   btn.disabled = true; setOverlay(card, "Scatto una nuova foto…");
-  try { await api(`/api/cameras/${enc(name)}/snap`, {method: "POST"}); card.querySelector("img").style.display = ""; card.querySelector("img").src = `/api/cameras/${enc(name)}/thumbnail?t=${Date.now()}`; }
-  catch (err) { alert(err.message); }
+  try { await api(`/api/cameras/${enc(name)}/snap`, {method: "POST"}); const im = card.querySelector("img"); im.style.visibility = ""; im.src = thumbUrl(name); const ag = card.querySelector(".age"); ag.textContent = "adesso"; ag.classList.remove("hidden"); }
+  catch (err) { setOverlay(card, err.message); setTimeout(() => setOverlay(card), 4000); btn.disabled = false; return; }
   setOverlay(card); btn.disabled = false;
+}
+
+async function toggleMotion(name, card, el) {
+  const c = cams.find(x => x.name === name); if (!c) return;
+  const want = !c.armed; el.style.opacity = .5;
+  try { const r = await api(`/api/cameras/${enc(name)}/motion`, {method: "POST", body: JSON.stringify({enabled: want})}); c.armed = r.armed != null ? r.armed : want; }
+  catch (err) { alert("Non riesco a cambiare il rilevamento: " + err.message); }
+  card.querySelector(".meta").innerHTML = metaHtml(c);
+}
+
+function toggleMute(name, btn) {
+  const p = players[name]; if (!p) return;
+  p.video.muted = !p.video.muted;
+  btn.innerHTML = p.video.muted ? I.muted : I.sound;
+  btn.title = p.video.muted ? "Attiva l'audio" : "Silenzia";
 }
 
 async function startLive(name, card, btn) {
@@ -199,10 +456,9 @@ async function startLive(name, card, btn) {
     const r = await api(`/api/cameras/${enc(name)}/live`, {method: "POST"});
     const view = card.querySelector(".view");
     const video = document.createElement("video");
-    video.autoplay = true; video.muted = true; video.playsInline = true; video.controls = true;
+    video.autoplay = true; video.muted = true; video.playsInline = true;
     view.querySelector("img").style.display = "none";
     view.prepend(video);
-    const badge = document.createElement("span"); badge.className = "badge"; badge.textContent = "LIVE"; view.appendChild(badge);
     if (!(window.mpegts && mpegts.isSupported())) throw new Error("Questo browser non supporta la live: usa il programma MatteoEye oppure Chrome");
     // Il video arriva in continuo via WebSocket; il lettore parte dal primo fotogramma chiave
     const wsUrl = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + r.ws;
@@ -217,10 +473,13 @@ async function startLive(name, card, btn) {
     player.attachMediaElement(video); player.load(); player.play().catch(() => {});
     video.addEventListener("playing", () => setOverlay(card), {once: true});
     video.addEventListener("ended", () => stopLive(name));
-    players[name] = {player, video, badge, card, sid: r.sid};
-    btn.textContent = "Stop"; btn.classList.replace("primary", "danger");
-    card.querySelector('[data-act="full"]').classList.remove("hidden");
-  } catch (err) { setOverlay(card, err.message); setTimeout(() => setOverlay(card), 4000); }
+    players[name] = {player, video, card, sid: r.sid};
+    card.classList.add("live"); setState(card, "LIVE");
+    const m = card.querySelector('[data-act="mute"]'); m.innerHTML = I.muted; m.title = "Attiva l'audio";
+  } catch (err) {
+    const v = card.querySelector("video"); if (v) v.remove(); card.querySelector("img").style.display = "";
+    setOverlay(card, err.message); setTimeout(() => setOverlay(card), 4000);
+  }
   btn.disabled = false;
 }
 
@@ -228,12 +487,9 @@ function stopLive(name) {
   const p = players[name]; if (!p) return;
   delete players[name];
   if (p.player) { try { p.player.pause(); p.player.unload(); p.player.detachMediaElement(); p.player.destroy(); } catch {} }
-  p.video.remove(); p.badge.remove();
-  const card = p.card; card.classList.remove("full"); setOverlay(card);
-  card.querySelector("img").style.display = "";
-  card.querySelector("img").src = `/api/cameras/${enc(name)}/thumbnail?t=${Date.now()}`;
-  const b = card.querySelector('[data-act="live"]'); b.textContent = "Live"; b.classList.replace("danger", "primary");
-  card.querySelector('[data-act="full"]').classList.add("hidden");
+  p.video.remove();
+  const card = p.card; card.classList.remove("full", "live"); setOverlay(card); setState(card, "");
+  const im = card.querySelector("img"); im.style.display = ""; im.src = thumbUrl(name);
   const del = () => fetch(`/api/cameras/${enc(name)}/live?sid=${enc(p.sid)}`, {method: "DELETE", credentials: "same-origin"});
   recs[name] ? stopRecording(name).finally(del) : del();
 }
@@ -244,13 +500,12 @@ const fmtTime = ms => { const s = Math.floor(ms / 1000); return String(Math.floo
 async function startRecording(name, card, btn) {
   btn.disabled = true;
   try {
-    if (!players[name]) { await startLive(name, card, card.querySelector('[data-act="live"]')); if (!players[name]) return; }
+    if (!players[name]) { await startLive(name, card, card.querySelector('[data-act="live"]')); if (!players[name]) { btn.disabled = false; return; } }
     const r = await api(`/api/cameras/${enc(name)}/record`, {method: "POST"});
-    const rec = recs[name] = {id: r.id, t0: Date.now(), btn};
-    btn.classList.add("danger");
-    const tick = () => { btn.textContent = "■ Stop " + fmtTime(Date.now() - rec.t0); };
+    const rec = recs[name] = {id: r.id, t0: Date.now(), card};
+    btn.classList.add("on"); btn.innerHTML = '<span class="recsq"></span>'; btn.title = "Ferma e salva la registrazione";
+    const tick = () => setState(card, "REC " + fmtTime(Date.now() - rec.t0), true);
     tick(); rec.timer = setInterval(tick, 1000);
-    const badge = players[name].badge; badge.textContent = "● REC"; badge.classList.add("rec");
   } catch (err) { setOverlay(card, err.message); setTimeout(() => setOverlay(card), 4000); }
   btn.disabled = false;
 }
@@ -258,9 +513,10 @@ async function startRecording(name, card, btn) {
 async function stopRecording(name) {
   const rec = recs[name]; if (!rec) return;
   delete recs[name]; clearInterval(rec.timer);
-  const card = rec.btn.closest(".cam");
-  rec.btn.textContent = "● Registra"; rec.btn.classList.remove("danger");
-  if (players[name]) { players[name].badge.textContent = "LIVE"; players[name].badge.classList.remove("rec"); }
+  const card = rec.card;
+  const btn = card.querySelector('[data-act="rec"]');
+  btn.classList.remove("on"); btn.innerHTML = '<span class="recdot"></span>'; btn.title = "Registra quello che vede la telecamera in un file video";
+  setState(card, players[name] ? "LIVE" : "");
   setOverlay(card, "Salvo la registrazione…");
   try {
     const r = await api(`/api/cameras/${enc(name)}/record/stop`, {method: "POST"});

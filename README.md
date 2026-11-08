@@ -53,10 +53,11 @@ Then sign in with your Blink email and password and enter the code Blink sends y
 ## Features
 
 - **Live view in seconds.** Video starts from the first keyframe, usually 7 to 20 seconds after the click. Most of that is Blink waking up a battery camera.
-- **One-click recording.** **● Registra** saves what the camera sees to an `.mp4`. When you stop, a *Save as* dialog lets you choose where; otherwise it lands in `Videos/MatteoEye` (Windows) or `Movies/MatteoEye` (macOS). If Blink ends the live view on its own, the recording is still saved.
+- **One-click recording.** The red **●** button saves what the camera sees to an `.mp4`; a `REC mm:ss` badge shows how long you have been recording. When you stop, a *Save as* dialog lets you choose where; otherwise it lands in `Videos/MatteoEye` (Windows) or `Movies/MatteoEye` (macOS). If Blink ends the live view on its own, the recording is still saved.
 - **Every camera at a glance.** Thumbnails, battery, temperature and arm status for all your cameras.
-- **Fresh snapshots.** **Foto** asks the camera for a new thumbnail.
-- **Fullscreen** with `⤢`, `Esc` to leave.
+- **One tab per place.** Each network (Sync Module) gets its own tab, so you only see the cameras of that house or office. The bar at the bottom arms or disarms the whole network, like in the Blink app, and the shield under each card toggles its motion detection.
+- **Fresh snapshots.** The camera button asks for a new thumbnail; the badge in the corner tells you how old the picture is.
+- **Fullscreen** and **audio** from the controls that appear while live; `Esc` leaves fullscreen. Dark theme by default, light theme one click away.
 - **Native window.** WebView2 on Windows and WebKit on macOS. If the window cannot open, it falls back to your browser.
 - **Private by design.** Only Blink's access tokens are stored, never your password. Everything runs on your computer and no third-party server sees your video.
 - **Optional remote access** from phones and other PCs over your home network, [Tailscale](https://tailscale.com) or [ngrok](https://ngrok.com) (macOS launchers, see [the Italian guide](docs/it/accesso-remoto.txt)).
@@ -177,7 +178,7 @@ Only Blink's access tokens are saved, never your password, in `%APPDATA%\MatteoE
 <details>
 <summary><b>The live view stops after a few minutes</b></summary>
 
-Battery cameras end live views on their own, just like in the Blink app. Press **Live** again. Each live view uses camera battery.
+Battery cameras end live views on their own, just like in the Blink app. Press the play button again. Each live view uses camera battery.
 </details>
 
 <details>

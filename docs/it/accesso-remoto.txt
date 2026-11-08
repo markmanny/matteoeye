@@ -14,7 +14,8 @@ AVVIO (Mac, dalla cartella del progetto)
 2. Si apre il browser su http://127.0.0.1:8787
 3. Accedi con email e password del tuo account Blink e inserisci il codice
    che Blink ti invia via SMS/email.
-4. Clicca "Live" su una telecamera. "⤢" la mette a schermo intero, Esc per uscire.
+4. Scegli in alto la scheda del posto (es. "Casa") e clicca il pulsante play su una
+   telecamera. Il pulsante schermo intero la allarga, Esc per uscire.
 
 La finestra del Terminale deve restare aperta mentre usi il sito.
 Dopo il primo accesso non serve rifare login: restano salvati solo i token
