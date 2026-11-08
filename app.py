@@ -42,6 +42,11 @@ try:
 except Exception:  # pragma: no cover
     FFMPEG = shutil.which("ffmpeg") or "ffmpeg"
 
+# Windows: senza questo ogni ffmpeg avviato da pythonw (nessun terminale) apre una
+# finestra di console vuota. Le finestre coprono il browser e Chromium, quando la sua
+# finestra e' coperta, smette di disegnare il video (l'audio invece continua).
+NO_WINDOW = {"creationflags": subprocess.CREATE_NO_WINDOW} if sys.platform == "win32" else {}
+
 # Modalita' programma: eseguibile impacchettato (PyInstaller) oppure "python app.py --app"
 APP_MODE = bool(getattr(sys, "frozen", False)) or "--app" in sys.argv
 # Pagina e file statici (dentro al pacchetto quando e' un eseguibile)
@@ -502,67 +507,70 @@ async def cameras(bl_session: str = Cookie(None)):
             "motion": cam.motion_detected,
             "wifi": cam.wifi_strength,
             "live": name in streams,
-            "network": getattr(getattr(cam, "sync", None), "name", "") or "",
-            "last_record": getattr(cam, "last_record", None),
-            "thumbnail_ts": _thumb_ts(getattr(cam, "thumbnail", None)),
             "updated": int(time.time()),
+            "network": getattr(getattr(cam, "sync", None), "name", None),
+            "thumb_ts": thumbnail_time(cam),
+            "last_record": getattr(cam, "last_record", None),
         })
     return out
 
 
-def _thumb_ts(url):
-    """Data (epoch) della miniatura, letta dal parametro ts= dell'indirizzo Blink."""
-    m = re.search(r"[?&]ts=(\d+)", url or "")
+def thumbnail_time(cam):
+    """Ora (epoch) della miniatura: Blink la scrive nell'indirizzo dell'immagine (ts=...)."""
+    m = re.search(r"ts=(\d{9,})", str(getattr(cam, "thumbnail", "") or ""))
     return int(m.group(1)) if m else None
 
 
 @app.get("/api/networks")
 async def networks(bl_session: str = Cookie(None)):
-    """Le reti (Sync Module) dell'account: nome, stato attivo/disattivo, online."""
+    """Sistemi Blink (Sync Module) dell'account, anche senza telecamere, con lo stato di attivazione."""
     require_auth(bl_session)
     out = []
-    for name, sm in (getattr(state["blink"], "sync", None) or {}).items():
-        try:
-            online = bool(sm.online)
-        except Exception:
-            online = False
+    for name, sm in getattr(state["blink"], "sync", {}).items():
         out.append({
             "name": name,
             "armed": getattr(sm, "arm", None),
-            "online": online,
-            "cameras": list(getattr(sm, "cameras", {}).keys()),
+            "online": getattr(sm, "online", None),
+            "cameras": len(getattr(sm, "cameras", {}) or {}),
         })
     return out
 
 
 @app.post("/api/networks/{name}/arm")
-async def arm_network(name: str, payload: dict, bl_session: str = Cookie(None)):
-    """Attiva (armed=true) o disattiva l'intera rete, come il pulsante dell'app Blink."""
+async def network_arm(name: str, payload: dict, bl_session: str = Cookie(None)):
+    """Attiva o disattiva un sistema (come l'interruttore Armed/Disarmed dell'app Blink)."""
     require_auth(bl_session)
-    sm = (getattr(state["blink"], "sync", None) or {}).get(name)
+    sm = getattr(state["blink"], "sync", {}).get(name)
     if sm is None:
-        raise HTTPException(404, "Rete non trovata")
-    await sm.async_arm(bool(payload.get("armed")))
-    await asyncio.sleep(1)
+        raise HTTPException(404, "Sistema non trovato")
+    armed = bool(payload.get("armed"))
     try:
-        await state["blink"].refresh(force=True)
+        await sm.async_arm(armed)
     except Exception as exc:
-        log.warning("Refresh dopo arm fallito: %s", exc)
-    return {"ok": True, "armed": sm.arm}
+        log.exception("Cambio stato del sistema %s non riuscito", name)
+        raise HTTPException(502, f"Blink non ha cambiato lo stato: {exc}")
+    log.info("Sistema %s %s", name, "attivato" if armed else "disattivato")
+    return {"ok": True, "armed": armed}
 
 
 @app.post("/api/cameras/{name}/motion")
 async def camera_motion(name: str, payload: dict, bl_session: str = Cookie(None)):
-    """Accende o spegne il rilevamento movimento della singola telecamera."""
+    """Accende o spegne il rilevamento movimento della singola telecamera (lo scudo sotto la carta)."""
     require_auth(bl_session)
     cam = find_camera(name)
-    await cam.async_arm(bool(payload.get("enabled")))
+    enabled = bool(payload.get("enabled"))
+    try:
+        await cam.async_arm(enabled)
+    except Exception as exc:
+        log.exception("Cambio del rilevamento movimento di %s non riuscito", name)
+        raise HTTPException(502, f"Blink non ha cambiato il rilevamento: {exc}")
     await asyncio.sleep(1)
     try:
         await state["blink"].refresh(force=True)
     except Exception as exc:
-        log.warning("Refresh dopo motion fallito: %s", exc)
-    return {"ok": True, "armed": cam.arm}
+        log.warning("Refresh dopo il cambio movimento fallito: %s", exc)
+    log.info("Rilevamento movimento di %s %s", name, "acceso" if enabled else "spento")
+    return {"ok": True, "armed": getattr(cam, "arm", enabled)}
 
 
 @app.get("/api/cameras/{name}/thumbnail")
@@ -666,7 +674,7 @@ async def _cut_recording(name, s, rec):
     for cmd in attempts:
         if not s["sess"].exists():
             break
-        proc = await asyncio.create_subprocess_exec(*cmd, stdin=asyncio.subprocess.DEVNULL)
+        proc = await asyncio.create_subprocess_exec(*cmd, stdin=asyncio.subprocess.DEVNULL, **NO_WINDOW)
         try:
             await asyncio.wait_for(proc.wait(), 120)
         except asyncio.TimeoutError:
@@ -729,7 +737,9 @@ async def open_stream(name, cam):
         "-muxdelay", "0", "-muxpreload", "0", "-flush_packets", "1",
         "-f", "mpegts", "pipe:1",
     ]
-    proc = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE)
+    proc = await asyncio.create_subprocess_exec(
+        *cmd, stdin=asyncio.subprocess.DEVNULL, stdout=asyncio.subprocess.PIPE, **NO_WINDOW
+    )
     # Secondo ffmpeg: registra tutta la sessione in un file .ts; "Registra" ne ritaglia un tratto.
     sess = out_dir / "sessione.ts"
     rec_cmd = [
@@ -742,7 +752,7 @@ async def open_stream(name, cam):
         "-f", "mpegts", str(sess),
     ]
     try:
-        rec = await asyncio.create_subprocess_exec(*rec_cmd, stdin=asyncio.subprocess.PIPE)
+        rec = await asyncio.create_subprocess_exec(*rec_cmd, stdin=asyncio.subprocess.PIPE, **NO_WINDOW)
     except Exception as exc:
         log.warning("Registratore non avviato per %s: %s", name, exc)
         rec = None
@@ -991,6 +1001,231 @@ async def recording_reveal(rid: str, request: Request, bl_session: str = Cookie(
     except Exception as exc:
         log.warning("Non riesco ad aprire la cartella: %s", exc)
     return {"ok": True}
+
+
+# ---------------------------------------------------------------- clip registrate da Blink
+# Due provenienze:
+#  - cloud Blink (con abbonamento): elenco e video si scaricano direttamente;
+#  - memoria locale del Sync Module (chiavetta USB): si chiede al modulo l'elenco
+#    ("manifest") e, per ogni clip aperta, di caricarla sul server Blink da cui poi la si scarica.
+# Il modulo fa una cosa alla volta: le richieste alla chiavetta sono in fila (un lucchetto
+# per sistema) e si fanno solo quando si apre la sezione Clip, mai in sottofondo.
+CLIPS = {"list": None, "at": 0.0, "notes": []}   # elenco in cache (5 min: leggere la chiavetta richiede ~25 s)
+CLIP_LOCKS = {}                                    # network_id -> asyncio.Lock
+CLIP_DIR = HLS_ROOT / "clips"
+
+
+def _iso_to_epoch(value):
+    from datetime import datetime, timezone
+
+    try:
+        d = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    return int(d.timestamp())
+
+
+def _sync_by_network_id(net_id):
+    for sm in getattr(state["blink"], "sync", {}).values():
+        if str(getattr(sm, "network_id", "")) == str(net_id):
+            return sm
+    return None
+
+
+def _live_on_network(sm):
+    """True se c'e' una live in corso su una telecamera di questo sistema."""
+    return any(getattr(s["live"].camera, "sync", None) is sm for s in streams.values())
+
+
+def _clip_lock(net_id):
+    return CLIP_LOCKS.setdefault(str(net_id), asyncio.Lock())
+
+
+async def _cloud_clips(days):
+    blink = state["blink"]
+    since = time.time() - days * 86400
+    out = []
+    for page in range(1, 6):  # ~25 clip per pagina
+        resp = await blink_api.request_videos(blink, time=since, page=page)
+        media = (resp or {}).get("media") if isinstance(resp, dict) else None
+        if not media:
+            break
+        for m in media:
+            if m.get("deleted") or not m.get("media"):
+                continue
+            out.append({
+                "id": f"c-{m['id']}", "source": "cloud",
+                "camera": m.get("device_name") or "", "network": m.get("network_name") or "",
+                "time": _iso_to_epoch(m.get("created_at")),
+                "thumb": bool(m.get("thumbnail")), "_media": m.get("media"), "_thumb": m.get("thumbnail"),
+            })
+    return out
+
+
+async def _local_clips(sm):
+    """Elenco delle clip sulla chiavetta del Sync Module `sm`."""
+    async with _clip_lock(sm.network_id):
+        resp = await sm.poll_local_storage_manifest()
+        req_id = (resp or {}).get("id") if isinstance(resp, dict) else None
+        if not req_id:
+            raise RuntimeError("il Sync Module non ha risposto (forse e' occupato)")
+        resp = await sm.poll_local_storage_manifest(req_id)
+        if not isinstance(resp, dict) or "clips" not in resp:
+            raise RuntimeError("elenco delle clip non disponibile")
+    manifest = resp.get("manifest_id")
+    names = getattr(sm, "_names_table", {}) or {}
+    out = []
+    for c in resp.get("clips", []):
+        out.append({
+            "id": f"l-{sm.network_id}-{manifest}-{c['id']}", "source": "local",
+            "camera": names.get(c.get("camera_name"), c.get("camera_name") or ""), "network": sm.name,
+            "time": _iso_to_epoch(c.get("created_at")), "size": c.get("size"), "thumb": False,
+        })
+    return out
+
+
+@app.get("/api/clips")
+async def clips(days: int = 14, refresh: bool = False, bl_session: str = Cookie(None)):
+    require_auth(bl_session)
+    if CLIPS["list"] is not None and not refresh and time.time() - CLIPS["at"] < 300:
+        return {"clips": _public(CLIPS["list"]), "notes": CLIPS["notes"]}
+    days = max(1, min(days, 60))
+    found, notes = [], []
+    try:
+        found += await _cloud_clips(days)
+    except Exception as exc:
+        log.warning("Clip nel cloud non disponibili: %s", exc)
+        notes.append("Clip nel cloud Blink non disponibili in questo momento.")
+    for sm in getattr(state["blink"], "sync", {}).values():
+        ls = getattr(sm, "_local_storage", {}) or {}
+        if not (ls.get("enabled") or ls.get("compatible") and ls.get("status")):
+            continue
+        if _live_on_network(sm):
+            notes.append(f"{sm.name}: chiavetta non letta perche' c'e' una live in corso.")
+            continue
+        try:
+            found += await _local_clips(sm)
+        except Exception as exc:
+            log.warning("Clip sulla chiavetta di %s non disponibili: %s", sm.name, exc)
+            notes.append(f"{sm.name}: la chiavetta del Sync Module non ha risposto, riprova tra poco.")
+    found.sort(key=lambda c: c["time"] or 0, reverse=True)
+    for c in found:  # clip della chiavetta gia' aperte: hanno la miniatura dal video
+        if c["source"] == "local":
+            c["thumb"] = (CLIP_DIR / (re.sub(r"[^A-Za-z0-9_-]", "_", c["id"]) + ".mp4")).exists()
+    CLIPS.update(list=found, at=time.time(), notes=notes)
+    log.info("Clip trovate: %d (%s)", len(found), ", ".join(notes) or "ok")
+    return {"clips": _public(found), "notes": notes}
+
+
+def _public(items):
+    return [{k: v for k, v in c.items() if not k.startswith("_")} for c in items]
+
+
+def _find_clip(cid):
+    for c in CLIPS["list"] or []:
+        if c["id"] == cid:
+            return c
+    raise HTTPException(404, "Clip non trovata: ricarica l'elenco")
+
+
+async def _fetch_clip(c):
+    """Scarica la clip `c` (una volta sola) e restituisce il percorso del file .mp4."""
+    CLIP_DIR.mkdir(parents=True, exist_ok=True)
+    path = CLIP_DIR / (re.sub(r"[^A-Za-z0-9_-]", "_", c["id"]) + ".mp4")
+    if path.exists() and path.stat().st_size > 1000:
+        return path
+    blink = state["blink"]
+    if c["source"] == "cloud":
+        r = await blink_api.http_get(blink, url=blink.urls.base_url + c["_media"], stream=True, json=False, timeout=90)
+        if r is None or r.status != 200:
+            raise HTTPException(502, "Blink non ha restituito la clip")
+        data = await r.read()
+    else:
+        _, net_id, manifest, clip_id = c["id"].split("-", 3)
+        sm = _sync_by_network_id(net_id)
+        if sm is None:
+            raise HTTPException(404, "Sistema non trovato")
+        if _live_on_network(sm):
+            raise HTTPException(409, "C'e' una live in corso su questo sistema: fermala per aprire le clip della chiavetta")
+        import string
+
+        url = blink.urls.base_url + string.Template(blink_api.local_storage_clip_url_template()).substitute(
+            account_id=blink.account_id, network_id=net_id, sync_id=sm.sync_id, manifest_id=manifest, clip_id=clip_id,
+        )
+        data = None
+        async with _clip_lock(net_id):
+            # 1) il modulo carica la clip sul server Blink  2) la si scarica
+            await blink_api.request_local_storage_clip(blink, net_id, sm.sync_id, manifest, clip_id)
+            for attempt in range(6):
+                r = await blink_api.http_get(blink, url, stream=True, json=False, timeout=90)
+                if r is not None and r.status == 200:
+                    data = await r.read()
+                    break
+                await asyncio.sleep(2 + attempt * 2)
+        if not data:
+            raise HTTPException(504, "Il Sync Module non ha caricato la clip: riprova tra poco")
+    if len(data) < 1000:
+        raise HTTPException(502, "Clip vuota o non valida")
+    tmp = path.with_suffix(".part")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+    log.info("Clip %s di %s scaricata (%d byte)", c["id"], c["camera"], len(data))
+    return path
+
+
+@app.get("/api/clips/{cid}/video")
+async def clip_video(cid: str, bl_session: str = Cookie(None)):
+    require_auth(bl_session)
+    path = await _fetch_clip(_find_clip(cid))
+    return FileResponse(path, media_type="video/mp4", headers={"Cache-Control": "private, max-age=3600"})
+
+
+@app.get("/api/clips/{cid}/thumbnail")
+async def clip_thumbnail(cid: str, bl_session: str = Cookie(None)):
+    require_auth(bl_session)
+    c = _find_clip(cid)
+    if not c.get("_thumb"):
+        # clip della chiavetta: nessuna miniatura da Blink; se la clip e' gia' stata aperta
+        # si usa un fotogramma del video scaricato
+        video = CLIP_DIR / (re.sub(r"[^A-Za-z0-9_-]", "_", cid) + ".mp4")
+        jpg = video.with_suffix(".jpg")
+        if video.exists() and not jpg.exists():
+            proc = await asyncio.create_subprocess_exec(
+                FFMPEG, "-hide_banner", "-loglevel", "error", "-ss", "1", "-i", str(video),
+                "-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "4", "-y", str(jpg),
+                stdin=asyncio.subprocess.DEVNULL, **NO_WINDOW,
+            )
+            await proc.wait()
+        if jpg.exists():
+            return FileResponse(jpg, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+        raise HTTPException(404, "Nessuna miniatura")
+    blink = state["blink"]
+    thumb = c["_thumb"]
+    url = thumb if thumb.startswith("http") else blink.urls.base_url + thumb
+    if not re.search(r"\.jpe?g|[?&]ext=", url):
+        url += ".jpg"
+    r = await blink_api.http_get(blink, url, stream=True, json=False)
+    if r is None or r.status != 200:
+        raise HTTPException(404, "Nessuna miniatura")
+    return Response(await r.read(), media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
+@app.post("/api/clips/{cid}/keep")
+async def clip_keep(cid: str, bl_session: str = Cookie(None)):
+    """Copia la clip tra le registrazioni, cosi' si salva con lo stesso "Salva con nome"."""
+    require_auth(bl_session)
+    c = _find_clip(cid)
+    src = await _fetch_clip(c)
+    label = re.sub(r'[\\/:*?"<>|]+', " ", c["camera"]).strip() or "telecamera"
+    stamp = time.strftime("%Y-%m-%d %H.%M.%S", time.localtime(c["time"] or time.time()))
+    out = recordings_dir() / f"{label} {stamp} (clip Blink).mp4"
+    shutil.copyfile(src, out)
+    rid = secrets.token_hex(8)
+    RECORDINGS[rid] = {"id": rid, "camera": c["camera"], "filename": out.name, "path": str(out),
+                       "seconds": None, "size": out.stat().st_size}
+    return RECORDINGS[rid]
 
 
 # ---------------------------------------------------------------- pagina

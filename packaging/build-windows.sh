@@ -32,7 +32,7 @@ pulisci
 
 echo "== file del programma"
 cp app.py "$OUT/"
-cp static/index.html static/mpegts.js "$OUT/static/"
+cp static/index.html static/mpegts.js static/logo.svg "$OUT/static/"
 cp "packaging/LEGGIMI - Windows.txt" "$OUT/"
 printf '@echo off\r\ncd /d "%%~dp0"\r\nstart "MatteoEye" /min "%%~dp0python\\python.exe" "%%~dp0app.py" --app\r\n' > "$OUT/Avvia MatteoEye.bat"
 find "$OUT" -name ".DS_Store" -delete

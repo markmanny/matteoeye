@@ -40,6 +40,9 @@ cartella dati dell'utente (`Libreria/Application Support/MatteoEye` sul Mac,
   salvarlo (cartella predefinita: Filmati/Video > MatteoEye).
 - **Foto** con il pulsante a forma di macchina fotografica: scatta una nuova
   miniatura; l'etichetta nell'angolo dice quanto e' vecchia l'immagine.
+- **Clip**: il pulsante in alto elenca le clip di movimento salvate da Blink negli
+  ultimi 30 giorni (cloud o chiavetta USB del Sync Module), raggruppate per giorno:
+  clic per vederle, Salva per tenerne una copia.
 - Durante la live compaiono audio, stop e schermo intero; Esc esce dallo schermo
   intero. Tema scuro di serie, tema chiaro con un clic.
 - Il programma si chiude da solo pochi minuti dopo che la finestra e' stata chiusa.

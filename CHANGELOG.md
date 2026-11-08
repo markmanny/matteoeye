@@ -5,9 +5,17 @@ All notable changes to this project are documented here. The format follows [Kee
 ## [Unreleased]
 
 ### Added
-- Redesigned interface: dark theme with a light option, one tab per network (Sync Module) so you only see the cameras of that place, camera cards with a play button, a controls pill (audio, stop, fullscreen, snapshot, record), a red `REC mm:ss` badge while recording, the age of the last picture, temperature, Wi-Fi and motion status under each card.
-- Arm / disarm the selected network from the bar at the bottom (`Disattivato` / `Attivo`), Sync Module online status, and per-camera motion detection toggle.
-- New endpoints: `GET /api/networks`, `POST /api/networks/{name}/arm`, `POST /api/cameras/{name}/motion`; `GET /api/cameras` now also returns `network`, `last_record` and `thumbnail_ts`.
+- **Clips**: past motion clips from the Blink cloud or from the Sync Module's USB stick, grouped by day, with in-page playback and *Save*.
+- **Arm / disarm** the selected system (Sync Module) from the switch at the bottom (`Disattivato` / `Attivo`), Sync Module online status, and a per-camera motion detection toggle.
+- **Light and dark theme**, remembering the choice.
+- New endpoints: `GET /api/networks`, `POST /api/networks/{name}/arm`, `POST /api/cameras/{name}/motion`, `GET /api/clips` (+ `/video`, `/thumbnail`, `/keep`); `GET /api/cameras` also returns `network`, `thumb_ts` and `last_record`.
+
+### Changed
+- Redesigned interface: one tab per system so you only see the cameras of that place, camera cards with a play button, a controls pill (audio, stop, fullscreen, snapshot, record), a red `REC mm:ss` badge while recording, the age of the last picture, temperature, Wi-Fi and motion status under each card.
+
+### Fixed
+- Windows: starting without a console (`pythonw`) no longer opens an empty window for every ffmpeg process. Those windows covered the browser, which then stopped drawing the live video while the audio kept playing.
+- The live view jumps back to the most recent frame when the window becomes visible again.
 
 ## [1.0.0] - 2026-11-07
 

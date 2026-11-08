@@ -54,10 +54,12 @@ Then sign in with your Blink email and password and enter the code Blink sends y
 
 - **Live view in seconds.** Video starts from the first keyframe, usually 7 to 20 seconds after the click. Most of that is Blink waking up a battery camera.
 - **One-click recording.** The red **●** button saves what the camera sees to an `.mp4`; a `REC mm:ss` badge shows how long you have been recording. When you stop, a *Save as* dialog lets you choose where; otherwise it lands in `Videos/MatteoEye` (Windows) or `Movies/MatteoEye` (macOS). If Blink ends the live view on its own, the recording is still saved.
-- **Every camera at a glance.** Thumbnails, battery, temperature and arm status for all your cameras.
-- **One tab per place.** Each network (Sync Module) gets its own tab, so you only see the cameras of that house or office. The bar at the bottom arms or disarms the whole network, like in the Blink app, and the shield under each card toggles its motion detection.
+- **One tab per place.** Each system (Sync Module) gets its own tab, so you only see the cameras of that house or office, with thumbnail age, battery, temperature, Wi-Fi and motion status under each card.
+- **Arm and disarm** the selected system from the switch at the bottom (`Disattivato` / `Attivo`), like in the Blink app. The shield under each card toggles that camera's motion detection.
+- **Past clips.** The **Clip** button lists the motion clips Blink saved in the last 30 days, grouped by day, from the Blink cloud or from the USB stick in the Sync Module. Click to play, **Salva** to keep a copy.
 - **Fresh snapshots.** The camera button asks for a new thumbnail; the badge in the corner tells you how old the picture is.
-- **Fullscreen** and **audio** from the controls that appear while live; `Esc` leaves fullscreen. Dark theme by default, light theme one click away.
+- **Fullscreen** and **audio** from the controls that appear while live; `Esc` leaves fullscreen.
+- **Light and dark theme**: dark by default, light one click away, and it remembers your choice.
 - **Native window.** WebView2 on Windows and WebKit on macOS. If the window cannot open, it falls back to your browser.
 - **Private by design.** Only Blink's access tokens are stored, never your password. Everything runs on your computer and no third-party server sees your video.
 - **Optional remote access** from phones and other PCs over your home network, [Tailscale](https://tailscale.com) or [ngrok](https://ngrok.com) (macOS launchers, see [the Italian guide](docs/it/accesso-remoto.txt)).
@@ -68,8 +70,8 @@ Then sign in with your Blink email and password and enter the code Blink sends y
     <td width="50%"><img src="docs/images/recording.png" alt="Recording in progress"></td>
   </tr>
   <tr>
-    <td align="center"><sub>All your cameras with live status</sub></td>
-    <td align="center"><sub>Recording a live view to MP4</sub></td>
+    <td align="center"><sub>All cameras together, plus arm/disarm for each system</sub></td>
+    <td align="center"><sub>Recording a live view to MP4 (dark theme)</sub></td>
   </tr>
   <tr>
     <td colspan="2"><img src="docs/images/login.png" alt="Sign-in screen"></td>
@@ -79,7 +81,7 @@ Then sign in with your Blink email and password and enter the code Blink sends y
   </tr>
 </table>
 
-<sub>Screenshots use simulated cameras from the test suite. The interface is currently in Italian.</sub>
+<sub>Screenshots use simulated cameras from the test suite and show an earlier layout of the same interface. The interface is currently in Italian.</sub>
 
 ## How it works
 
@@ -133,7 +135,8 @@ On macOS you can also double-click the launchers in [`scripts/macos/`](scripts/m
 matteoeye/
 ├── app.py                  # the whole server: Blink login, live view, recording, window
 ├── static/
-│   ├── index.html          # the single-page interface
+│   ├── index.html          # the single-page interface (light/dark, cameras, clips)
+│   ├── logo.svg            # app icon
 │   └── mpegts.js           # MPEG-TS player for the browser/WebView
 ├── tests/                  # end-to-end tests with a simulated Blink camera
 ├── packaging/              # build scripts for the Windows and macOS packages
@@ -173,6 +176,12 @@ Then attach both zips to a new [GitHub Release](https://github.com/markmanny/mat
 <summary><b>Where are my credentials stored?</b></summary>
 
 Only Blink's access tokens are saved, never your password, in `%APPDATA%\MatteoEye` on Windows and `~/Library/Application Support/MatteoEye` on macOS, together with the log file `blinklive.log`. **Esci** (log out) deletes them.
+</details>
+
+<details>
+<summary><b>Clips take a while to show up</b></summary>
+
+If your clips are stored on the USB stick in the Sync Module, MatteoEye has to ask the module for the list (a few seconds, up to about 30) and, for each clip you open, ask it to upload the clip to Blink first: the Blink app does the same. The list is kept for 5 minutes; **Aggiorna elenco** reads it again. While a live view is running on a system, its USB stick is not read, because the Sync Module handles one request at a time.
 </details>
 
 <details>
