@@ -1027,7 +1027,8 @@ def _clip_cache_cleanup():
     now = time.time()
     for f in files:
         try:
-            if now - f.stat().st_mtime > 30 * 86400 or total > CLIP_CACHE_MAX or f.suffix == ".part":
+            old = now - f.stat().st_mtime > 30 * 86400
+            if old or f.suffix == ".part" or (total > CLIP_CACHE_MAX and f.suffix == ".mp4"):
                 total -= f.stat().st_size
                 f.unlink()
         except OSError:
@@ -1135,7 +1136,10 @@ async def clips(days: int = 14, refresh: bool = False, bl_session: str = Cookie(
     found.sort(key=lambda c: c["time"] or 0, reverse=True)
     CLIPS.update(list=found, at=time.time(), notes=notes)
     log.info("Clip trovate: %d (%s)", len(found), ", ".join(notes) or "ok")
-    return {"clips": _public(_with_thumbs(found)), "notes": notes}
+    _with_thumbs(found)
+    PREFETCH["failed"].clear()  # elenco nuovo: si riprovano anche le clip che prima non erano arrivate
+    _enqueue_thumbs([c["id"] for c in found if c["source"] == "local" and not c["thumb"]])
+    return {"clips": _public(found), "notes": notes}
 
 
 def _with_thumbs(items):
@@ -1278,7 +1282,7 @@ async def _prefetch_status(ids):
 async def _prefetch_worker():
     """Scarica una clip alla volta e ne prepara la miniatura. Se sul sistema c'e' una live
     la chiavetta non si puo' leggere: quelle clip aspettano."""
-    skipped = 0
+    skipped, done = 0, 0
     while PREFETCH["queue"]:
         cid = PREFETCH["queue"][0]
         c = next((x for x in CLIPS["list"] or [] if x["id"] == cid), None)
@@ -1299,24 +1303,41 @@ async def _prefetch_worker():
         try:
             await _fetch_clip(c)
             await _clip_thumb(c)
+            done += 1
+            if done % 25 == 0:
+                _clip_cache_cleanup()
         except Exception as exc:
             PREFETCH["failed"][cid] = str(getattr(exc, "detail", exc))
             log.warning("Miniatura della clip %s di %s non pronta: %s", cid, c["camera"], PREFETCH["failed"][cid])
         await asyncio.sleep(0.5)  # respiro per il Sync Module
+    if done:
+        log.info("Miniature pronte per %d clip", done)
+
+
+def _enqueue_thumbs(ids, front=False):
+    """Mette in coda le miniature da preparare. Con front=True passano davanti (clip visibili)."""
+    known = {c["id"] for c in CLIPS["list"] or []}
+    ids = [i for i in ids if i in known and i not in PREFETCH["failed"]]
+    if front:
+        rest = [i for i in PREFETCH["queue"] if i not in set(ids)]
+        PREFETCH["queue"][:] = list(dict.fromkeys(ids)) + rest
+    else:
+        seen = set(PREFETCH["queue"])
+        PREFETCH["queue"].extend(i for i in dict.fromkeys(ids) if i not in seen)
+    if PREFETCH["queue"] and (PREFETCH["task"] is None or PREFETCH["task"].done()):
+        try:
+            PREFETCH["task"] = asyncio.get_running_loop().create_task(_prefetch_worker())
+        except RuntimeError:
+            pass
 
 
 @app.post("/api/clips/prefetch")
 async def clips_prefetch(payload: dict, bl_session: str = Cookie(None)):
-    """La pagina chiede le miniature delle clip che mostra: si preparano in sottofondo, in ordine."""
+    """La pagina chiede le miniature delle clip che mostra: passano davanti alle altre in coda."""
     require_auth(bl_session)
-    ids = [i for i in (payload.get("ids") or []) if isinstance(i, str)][:120]
-    known = {c["id"] for c in CLIPS["list"] or []}
-    for cid in ids:
-        if cid in known and cid not in PREFETCH["queue"] and cid not in PREFETCH["failed"]:
-            PREFETCH["queue"].append(cid)
-    if PREFETCH["queue"] and (PREFETCH["task"] is None or PREFETCH["task"].done()):
-        PREFETCH["task"] = asyncio.create_task(_prefetch_worker())
-    return await _prefetch_status(ids)
+    ids = [i for i in (payload.get("ids") or []) if isinstance(i, str)][:2000]
+    _enqueue_thumbs(ids, front=bool(payload.get("front", True)))
+    return await _prefetch_status(ids[:200])
 
 
 @app.get("/api/clips/prefetch")
