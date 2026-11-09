@@ -1012,7 +1012,29 @@ async def recording_reveal(rid: str, request: Request, bl_session: str = Cookie(
 # per sistema) e si fanno solo quando si apre la sezione Clip, mai in sottofondo.
 CLIPS = {"list": None, "at": 0.0, "notes": []}   # elenco in cache (5 min: leggere la chiavetta richiede ~25 s)
 CLIP_LOCKS = {}                                    # network_id -> asyncio.Lock
-CLIP_DIR = HLS_ROOT / "clips"
+CLIP_DIR = DATA / "clip_cache"                     # clip gia' scaricate e miniature: restano tra un avvio e l'altro
+CLIP_CACHE_MAX = 1_000_000_000                     # ~1 GB: oltre si cancellano le clip piu' vecchie
+PREFETCH = {"queue": [], "task": None, "failed": {}}   # miniature da preparare in sottofondo (id delle clip)
+
+
+def _clip_cache_cleanup():
+    """Toglie dalla cache le clip piu' vecchie di 30 giorni e, se supera il limite, le piu' vecchie."""
+    try:
+        files = sorted(CLIP_DIR.glob("*.*"), key=lambda f: f.stat().st_mtime) if CLIP_DIR.is_dir() else []
+        total = sum(f.stat().st_size for f in files)
+    except OSError:
+        return
+    now = time.time()
+    for f in files:
+        try:
+            if now - f.stat().st_mtime > 30 * 86400 or total > CLIP_CACHE_MAX or f.suffix == ".part":
+                total -= f.stat().st_size
+                f.unlink()
+        except OSError:
+            pass
+
+
+_clip_cache_cleanup()
 
 
 def _iso_to_epoch(value):
@@ -1090,7 +1112,7 @@ async def _local_clips(sm):
 async def clips(days: int = 14, refresh: bool = False, bl_session: str = Cookie(None)):
     require_auth(bl_session)
     if CLIPS["list"] is not None and not refresh and time.time() - CLIPS["at"] < 300:
-        return {"clips": _public(CLIPS["list"]), "notes": CLIPS["notes"]}
+        return {"clips": _public(_with_thumbs(CLIPS["list"])), "notes": CLIPS["notes"]}
     days = max(1, min(days, 60))
     found, notes = [], []
     try:
@@ -1111,12 +1133,19 @@ async def clips(days: int = 14, refresh: bool = False, bl_session: str = Cookie(
             log.warning("Clip sulla chiavetta di %s non disponibili: %s", sm.name, exc)
             notes.append(f"{sm.name}: la chiavetta del Sync Module non ha risposto, riprova tra poco.")
     found.sort(key=lambda c: c["time"] or 0, reverse=True)
-    for c in found:  # clip della chiavetta gia' aperte: hanno la miniatura dal video
-        if c["source"] == "local":
-            c["thumb"] = (CLIP_DIR / (re.sub(r"[^A-Za-z0-9_-]", "_", c["id"]) + ".mp4")).exists()
     CLIPS.update(list=found, at=time.time(), notes=notes)
     log.info("Clip trovate: %d (%s)", len(found), ", ".join(notes) or "ok")
-    return {"clips": _public(found), "notes": notes}
+    return {"clips": _public(_with_thumbs(found)), "notes": notes}
+
+
+def _with_thumbs(items):
+    """Clip della chiavetta: la miniatura c'e' se il video o il suo fotogramma sono gia' in cache
+    (puo' arrivare dopo l'elenco, dal lavoro in sottofondo)."""
+    for c in items:
+        if c["source"] == "local":
+            path = _clip_path(c)
+            c["thumb"] = path.with_suffix(".jpg").exists() or path.exists()
+    return items
 
 
 def _public(items):
@@ -1130,10 +1159,41 @@ def _find_clip(cid):
     raise HTTPException(404, "Clip non trovata: ricarica l'elenco")
 
 
+def _clip_path(c):
+    """File locale della clip. Per la chiavetta la chiave e' rete+clip: l'id dell'elenco
+    contiene anche il manifest, che cambia a ogni lettura, e la cache deve sopravvivergli."""
+    CLIP_DIR.mkdir(parents=True, exist_ok=True)
+    if c["source"] == "local":
+        _, net_id, _manifest, clip_id = c["id"].split("-", 3)
+        key = f"l-{net_id}-{clip_id}"
+    else:
+        key = c["id"]
+    return CLIP_DIR / (re.sub(r"[^A-Za-z0-9_-]", "_", key) + ".mp4")
+
+
+async def _clip_thumb(c):
+    """Miniatura (jpg) della clip, se il video e' gia' sul computer: un fotogramma estratto con ffmpeg."""
+    video = _clip_path(c)
+    jpg = video.with_suffix(".jpg")
+    if jpg.exists():
+        return jpg
+    if not video.exists():
+        return None
+    for seek in (["-ss", "1"], []):  # clip piu' corte di un secondo: primo fotogramma
+        proc = await asyncio.create_subprocess_exec(
+            FFMPEG, "-hide_banner", "-loglevel", "error", *seek, "-i", str(video),
+            "-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "4", "-y", str(jpg),
+            stdin=asyncio.subprocess.DEVNULL, **NO_WINDOW,
+        )
+        await proc.wait()
+        if jpg.exists():
+            return jpg
+    return None
+
+
 async def _fetch_clip(c):
     """Scarica la clip `c` (una volta sola) e restituisce il percorso del file .mp4."""
-    CLIP_DIR.mkdir(parents=True, exist_ok=True)
-    path = CLIP_DIR / (re.sub(r"[^A-Za-z0-9_-]", "_", c["id"]) + ".mp4")
+    path = _clip_path(c)
     if path.exists() and path.stat().st_size > 1000:
         return path
     blink = state["blink"]
@@ -1187,19 +1247,11 @@ async def clip_thumbnail(cid: str, bl_session: str = Cookie(None)):
     require_auth(bl_session)
     c = _find_clip(cid)
     if not c.get("_thumb"):
-        # clip della chiavetta: nessuna miniatura da Blink; se la clip e' gia' stata aperta
-        # si usa un fotogramma del video scaricato
-        video = CLIP_DIR / (re.sub(r"[^A-Za-z0-9_-]", "_", cid) + ".mp4")
-        jpg = video.with_suffix(".jpg")
-        if video.exists() and not jpg.exists():
-            proc = await asyncio.create_subprocess_exec(
-                FFMPEG, "-hide_banner", "-loglevel", "error", "-ss", "1", "-i", str(video),
-                "-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "4", "-y", str(jpg),
-                stdin=asyncio.subprocess.DEVNULL, **NO_WINDOW,
-            )
-            await proc.wait()
-        if jpg.exists():
-            return FileResponse(jpg, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+        # clip della chiavetta: nessuna miniatura da Blink, si usa un fotogramma del video
+        # scaricato (dal lavoro in sottofondo o perche' la clip e' gia' stata aperta)
+        jpg = await _clip_thumb(c)
+        if jpg:
+            return FileResponse(jpg, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
         raise HTTPException(404, "Nessuna miniatura")
     blink = state["blink"]
     thumb = c["_thumb"]
@@ -1210,6 +1262,68 @@ async def clip_thumbnail(cid: str, bl_session: str = Cookie(None)):
     if r is None or r.status != 200:
         raise HTTPException(404, "Nessuna miniatura")
     return Response(await r.read(), media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
+
+
+async def _prefetch_status(ids):
+    ready, failed = [], []
+    for cid in ids:
+        c = next((x for x in CLIPS["list"] or [] if x["id"] == cid), None)
+        if c and (c.get("_thumb") or _clip_path(c).with_suffix(".jpg").exists()):
+            ready.append(cid)
+        elif cid in PREFETCH["failed"]:
+            failed.append(cid)
+    return {"pending": len(PREFETCH["queue"]), "ready": ready, "failed": failed}
+
+
+async def _prefetch_worker():
+    """Scarica una clip alla volta e ne prepara la miniatura. Se sul sistema c'e' una live
+    la chiavetta non si puo' leggere: quelle clip aspettano."""
+    skipped = 0
+    while PREFETCH["queue"]:
+        cid = PREFETCH["queue"][0]
+        c = next((x for x in CLIPS["list"] or [] if x["id"] == cid), None)
+        if c is None or c.get("_thumb") or _clip_path(c).with_suffix(".jpg").exists():
+            PREFETCH["queue"].pop(0)
+            continue
+        if c["source"] == "local":
+            sm = _sync_by_network_id(c["id"].split("-", 3)[1])
+            if sm is not None and _live_on_network(sm):
+                PREFETCH["queue"].append(PREFETCH["queue"].pop(0))
+                skipped += 1
+                if skipped >= len(PREFETCH["queue"]):  # tutte in attesa di una live: riprovo tra poco
+                    await asyncio.sleep(10)
+                    skipped = 0
+                continue
+        skipped = 0
+        PREFETCH["queue"].pop(0)
+        try:
+            await _fetch_clip(c)
+            await _clip_thumb(c)
+        except Exception as exc:
+            PREFETCH["failed"][cid] = str(getattr(exc, "detail", exc))
+            log.warning("Miniatura della clip %s di %s non pronta: %s", cid, c["camera"], PREFETCH["failed"][cid])
+        await asyncio.sleep(0.5)  # respiro per il Sync Module
+
+
+@app.post("/api/clips/prefetch")
+async def clips_prefetch(payload: dict, bl_session: str = Cookie(None)):
+    """La pagina chiede le miniature delle clip che mostra: si preparano in sottofondo, in ordine."""
+    require_auth(bl_session)
+    ids = [i for i in (payload.get("ids") or []) if isinstance(i, str)][:120]
+    known = {c["id"] for c in CLIPS["list"] or []}
+    for cid in ids:
+        if cid in known and cid not in PREFETCH["queue"] and cid not in PREFETCH["failed"]:
+            PREFETCH["queue"].append(cid)
+    if PREFETCH["queue"] and (PREFETCH["task"] is None or PREFETCH["task"].done()):
+        PREFETCH["task"] = asyncio.create_task(_prefetch_worker())
+    return await _prefetch_status(ids)
+
+
+@app.get("/api/clips/prefetch")
+async def clips_prefetch_status(ids: str = "", bl_session: str = Cookie(None)):
+    """Quali delle clip indicate hanno gia' la miniatura pronta."""
+    require_auth(bl_session)
+    return await _prefetch_status([i for i in ids.split(",") if i][:200])
 
 
 @app.post("/api/clips/{cid}/keep")

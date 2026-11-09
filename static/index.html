@@ -616,7 +616,7 @@ async function loadClips(refresh) {
   $("#cliplist").innerHTML = `<div class="loading"><div class="ring"></div><div>Cerco le clip…<br><small>Se sono sulla chiavetta del Sync Module servono circa 30 secondi.</small></div></div>`;
   try {
     const r = await api(`/api/clips?days=30${refresh ? "&refresh=1" : ""}`);
-    CLIPLIST = r.clips; clipNotes = r.notes || []; clipShown = 60;
+    CLIPLIST = r.clips; clipNotes = r.notes || []; clipShown = 60; thumbWanted = new Set();
     renderClips();
   } catch (err) {
     $("#cliplist").innerHTML = `<div class="loading">${esc("Non riesco a leggere le clip: " + err.message)}<button class="more" data-retry="1">Riprova</button></div>`;
@@ -655,6 +655,34 @@ function renderClips() {
   });
   if (list.length > clipShown) html += `<button class="more" id="moreClips">Mostra altre (${list.length - clipShown})</button>`;
   $("#cliplist").innerHTML = html;
+  requestThumbs(shown.filter(c => !c.thumb));
+}
+
+// Miniature delle clip sulla chiavetta: Blink non le fornisce, il server le prepara in
+// sottofondo (scarica la clip, estrae un fotogramma) e la pagina le inserisce appena pronte.
+let thumbWanted = new Set(), thumbPoll = null;
+async function requestThumbs(list) {
+  const ids = list.map(c => c.id).filter(id => !thumbWanted.has(id));
+  if (!ids.length) return;
+  ids.forEach(id => thumbWanted.add(id));
+  try { applyThumbs(await api("/api/clips/prefetch", {method: "POST", body: JSON.stringify({ids})})); } catch {}
+}
+function applyThumbs(st) {
+  (st.ready || []).forEach(id => {
+    thumbWanted.delete(id);
+    const c = (CLIPLIST || []).find(x => x.id === id); if (!c || c.thumb) return;
+    c.thumb = true;
+    const th = document.querySelector(`.clip[data-id="${CSS.escape(id)}"] .th`);
+    if (th && !th.querySelector("img")) th.insertAdjacentHTML("beforeend", `<img src="/api/clips/${enc(id)}/thumbnail?t=${Date.now()}" alt="" onerror="this.remove()">`);
+  });
+  (st.failed || []).forEach(id => thumbWanted.delete(id));
+  clearTimeout(thumbPoll);
+  if (thumbWanted.size && view === "clips") thumbPoll = setTimeout(pollThumbs, 4000);
+}
+async function pollThumbs() {
+  const ids = [...thumbWanted]; if (!ids.length || view !== "clips") return;
+  try { applyThumbs(await api("/api/clips/prefetch?ids=" + enc(ids.join(",")))); }
+  catch { thumbPoll = setTimeout(pollThumbs, 8000); }
 }
 
 $("#clipbar").onclick = e => {

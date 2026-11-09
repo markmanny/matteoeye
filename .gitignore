@@ -19,3 +19,6 @@ tests/appdata_fake/
 tests/rec_test/
 
 .DS_Store
+
+# clip scaricate dalla chiavetta e miniature (cache locale, modalita' browser)
+clip_cache/

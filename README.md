@@ -181,7 +181,7 @@ Only Blink's access tokens are saved, never your password, in `%APPDATA%\MatteoE
 <details>
 <summary><b>Clips take a while to show up</b></summary>
 
-If your clips are stored on the USB stick in the Sync Module, MatteoEye has to ask the module for the list (a few seconds, up to about 30) and, for each clip you open, ask it to upload the clip to Blink first: the Blink app does the same. The list is kept for 5 minutes; **Aggiorna elenco** reads it again. While a live view is running on a system, its USB stick is not read, because the Sync Module handles one request at a time.
+If your clips are stored on the USB stick in the Sync Module, MatteoEye has to ask the module for the list (a few seconds, up to about 30) and, for each clip you open, ask it to upload the clip to Blink first: the Blink app does the same. The list is kept for 5 minutes; **Aggiorna elenco** reads it again. Blink has no thumbnails for clips on the stick, so MatteoEye prepares them in the background, one clip at a time, and keeps them in a local cache (about 1 GB / 30 days). While a live view is running on a system, its USB stick is not read, because the Sync Module handles one request at a time.
 </details>
 
 <details>

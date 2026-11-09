@@ -6,6 +6,7 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ### Added
 - **Clips**: past motion clips from the Blink cloud or from the Sync Module's USB stick, grouped by day, with in-page playback and *Save*.
+- Thumbnails for USB-stick clips: Blink has none, so MatteoEye prepares them in the background (one clip at a time, never while a live view runs on that system) and keeps them in a local cache of about 1 GB / 30 days.
 - **Arm / disarm** the selected system (Sync Module) from the switch at the bottom (`Disattivato` / `Attivo`), Sync Module online status, and a per-camera motion detection toggle.
 - **Light and dark theme**, remembering the choice.
 - New endpoints: `GET /api/networks`, `POST /api/networks/{name}/arm`, `POST /api/cameras/{name}/motion`, `GET /api/clips` (+ `/video`, `/thumbnail`, `/keep`); `GET /api/cameras` also returns `network`, `thumb_ts` and `last_record`.
