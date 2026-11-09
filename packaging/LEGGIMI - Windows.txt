@@ -13,17 +13,29 @@ MATTEOEYE PER WINDOWS - vedere le telecamere Blink dal PC
    del tuo account Blink e inserisci il codice che Blink ti manda via SMS/email
    (serve solo la prima volta su questo PC).
 
-4. Clicca "Live" su una telecamera. Il simbolo "⤢" la mette a schermo intero,
-   Esc per uscire.
+4. In alto ci sono le schede dei tuoi posti (es. "Casa", "Ufficio"): clicca
+   una scheda per vedere solo le telecamere di quel posto. Il pulsante play al
+   centro di una telecamera la mostra in diretta; durante la live compaiono i
+   pulsanti audio, stop e schermo intero (Esc per uscire).
 
-5. "● Registra" registra in un file video quello che vede la telecamera (se la
-   live e' spenta la avvia da solo). Premi "■ Stop": si apre la finestra per
+5. Il pallino rosso registra in un file video quello che vede la telecamera (se
+   la live e' spenta la avvia da solo); in alto compare "REC" con il tempo.
+   Premi di nuovo lo stesso pulsante per fermare: si apre la finestra per
    scegliere dove salvare il video (.mp4). Se annulli, il video resta nella
    cartella Video > MatteoEye. Quando Blink chiude la live da sola, la
    registrazione viene salvata lo stesso.
 
+6. "Clip" in alto a destra mostra le clip di movimento salvate da Blink negli
+   ultimi 30 giorni (cloud o chiavetta del Sync Module), con le anteprime:
+   clic per vederle, "Salva" per tenerne una copia.
+
+7. L'interruttore in basso (Disattivato / Attivo) accende o spegne tutto il
+   sistema come nell'app Blink; lo scudo sotto ogni telecamera accende o spegne
+   il suo rilevamento movimento. Il sole/luna in alto cambia tema chiaro/scuro.
+
 PER SPEGNERLO
-Chiudi la finestra di MatteoEye (o premi "Chiudi MatteoEye" in alto a destra).
+Chiudi la finestra di MatteoEye (oppure menu "..." in alto a destra >
+"Chiudi MatteoEye").
 
 NOTE
 - Non serve installare Python o altro: e' tutto dentro questa cartella.
@@ -33,5 +45,5 @@ NOTE
   nella cartella  %APPDATA%\MatteoEye
   (es. C:\Users\TUONOME\AppData\Roaming\MatteoEye). "Esci" cancella i token.
 - Le telecamere a batteria chiudono la live dopo un po', come nell'app Blink:
-  basta ripremere "Live". Ogni live consuma batteria della telecamera.
+  basta ripremere play. Ogni live consuma batteria della telecamera.
 - Se qualcosa non va, manda il file blinklive.log che trovi nella cartella sopra.
